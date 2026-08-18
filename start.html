@@ -23,7 +23,6 @@
   <link rel="stylesheet" href="styles.css?v=4">
   <link rel="stylesheet" href="start-product.css?v=2">
   <script src="script.js?v=4" defer></script>
-  <script src="start-product.js?v=2" defer></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -82,10 +81,10 @@
     <section class="start-options section" id="start-options"><div class="container">
       <div class="simple-head reveal"><div class="eyebrow">Можно начать с любого этапа</div><h2>Что у вас уже есть?</h2><p>Выберите подходящий вариант — остальное уточним сами.</p></div>
       <div class="option-grid">
-        <a class="option-card reveal" href="#request" data-stage="Есть только идея"><span>01</span><strong>Только идея</strong><small>Поможем с рецептурой и ТЗ</small></a>
-        <a class="option-card reveal" href="#request" data-stage="Есть готовая рецептура"><span>02</span><strong>Рецептура</strong><small>Проверим и рассчитаем запуск</small></a>
-        <a class="option-card reveal" href="#request" data-stage="Есть своё сырьё"><span>03</span><strong>Своё сырьё</strong><small>Проверим документы и произведём</small></a>
-        <a class="option-card reveal" href="#request" data-stage="Нужна только фасовка"><span>04</span><strong>Только фасовка</strong><small>Без лишних услуг</small></a>
+        <a class="option-card reveal" href="#request"><span>01</span><strong>Только идея</strong><small>Поможем с рецептурой и ТЗ</small></a>
+        <a class="option-card reveal" href="#request"><span>02</span><strong>Рецептура</strong><small>Проверим и рассчитаем запуск</small></a>
+        <a class="option-card reveal" href="#request"><span>03</span><strong>Своё сырьё</strong><small>Проверим документы и произведём</small></a>
+        <a class="option-card reveal" href="#request"><span>04</span><strong>Только фасовка</strong><small>Без лишних услуг</small></a>
       </div>
     </div></section>
 
@@ -100,16 +99,14 @@
     </div></section>
 
     <section class="request section section-tint" id="request"><div class="container request-simple-grid">
-      <div class="request-simple-copy reveal"><div class="eyebrow">Первый шаг</div><h2>Коротко опишите задачу</h2><p>Четырёх полей достаточно. Ответим в течение рабочего часа по будням с 9:00 до 18:00 по Москве.</p><a class="request-phone" href="tel:+79065787413"><span>Или позвоните</span><strong>+7 906 578-74-13</strong></a></div>
-      <form class="simple-form reveal" id="launch-form">
-        <label><span>Как к вам обращаться *</span><input name="name" autocomplete="name" required placeholder="Ваше имя"></label>
-        <label><span>Телефон *</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" required placeholder="+7 900 000-00-00"></label>
-        <label><span>Что у вас уже есть?</span><select name="stage" id="stage"><option>Есть только идея</option><option>Есть готовая рецептура</option><option>Есть своё сырьё</option><option>Нужна только фасовка</option></select></label>
-        <label><span>Что хотите выпустить?</span><textarea name="message" rows="3" placeholder="Например: капсулы, 500 банок"></textarea></label>
-        <label class="simple-consent"><input type="checkbox" required><span>Согласен на обработку персональных данных согласно <a href="privacy.html" target="_blank">политике</a></span></label>
-        <button class="button button-primary" type="submit">Отправить в WhatsApp</button>
-        <p class="launch-status" role="status" aria-live="polite"></p>
-      </form>
+      <div class="request-simple-copy reveal"><div class="eyebrow">Первый шаг</div><h2>Просто расскажите о задаче</h2><p>Можно написать своими словами — готовое техническое задание не требуется. Ответим в течение рабочего часа по будням с 9:00 до 18:00 по Москве.</p></div>
+      <div class="contact-panel reveal">
+        <span>Выберите удобный способ</span>
+        <a class="button button-primary" href="https://wa.me/79065787413?text=%D0%A5%D0%BE%D1%87%D1%83%20%D0%BE%D0%B1%D1%81%D1%83%D0%B4%D0%B8%D1%82%D1%8C%20%D0%B7%D0%B0%D0%BF%D1%83%D1%81%D0%BA%20%D0%BF%D1%80%D0%BE%D0%B4%D1%83%D0%BA%D1%82%D0%B0" target="_blank" rel="noopener">Написать в WhatsApp</a>
+        <a class="button contact-call" href="tel:+79065787413">Позвонить: +7 906 578-74-13</a>
+        <a class="contact-email" href="mailto:Burunduk.shop@mail.ru">Или написать на e-mail</a>
+        <small>Форма заявки появится после безопасного подключения к Битрикс24.</small>
+      </div>
     </div></section>
   </main>
 
