@@ -47,7 +47,6 @@
 .contact-call{border-color:var(--line);color:var(--blue);background:#fff}
 .contact-call:hover{border-color:var(--blue)}
 .contact-email{align-self:center;margin-top:12px;color:var(--blue);font-size:12px;font-weight:700;text-decoration:underline}
-.contact-panel small{margin-top:22px;color:var(--muted);font-size:10px;text-align:center}
 .footer-address>a{margin-bottom:8px;color:#fff;font-size:15px}
 .mobile-quick{display:none}
 
