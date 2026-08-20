@@ -37,6 +37,7 @@ if ('IntersectionObserver' in window) {
 
 const METRIKA_ID = 111744945;
 const ANALYTICS_CONSENT_KEY = 'fgn_analytics_consent';
+const ANALYTICS_CONSENT_TTL = 365 * 24 * 60 * 60 * 1000;
 let metrikaLoading = false;
 
 const reachGoal = (goal) => {
@@ -64,35 +65,89 @@ const loadMetrika = () => {
   });
 };
 
-let analyticsConsent = null;
-try {
-  analyticsConsent = localStorage.getItem(ANALYTICS_CONSENT_KEY);
-} catch (error) {
-  analyticsConsent = null;
-}
+const readAnalyticsChoice = () => {
+  try {
+    const stored = localStorage.getItem(ANALYTICS_CONSENT_KEY);
+    if (!stored) return null;
+    const choice = JSON.parse(stored);
+    if (!['granted', 'denied'].includes(choice.status) || !Number.isFinite(choice.expiresAt) || choice.expiresAt <= Date.now()) {
+      localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+      return null;
+    }
+    return choice.status;
+  } catch (error) {
+    try {
+      localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+    } catch (storageError) {
+      // Storage is unavailable; the visitor will be asked again next time.
+    }
+    return null;
+  }
+};
+
+let analyticsConsent = readAnalyticsChoice();
 
 if (analyticsConsent === 'granted') loadMetrika();
 
 const cookieNotice = document.querySelector('#cookie-notice');
 const analyticsAccept = document.querySelector('#cookie-analytics-accept');
 const analyticsDecline = document.querySelector('#cookie-analytics-decline');
+const cookieSettingsButtons = document.querySelectorAll('[data-cookie-settings]');
 
-if (cookieNotice && analyticsConsent !== 'granted' && analyticsConsent !== 'denied') {
+const showCookieNotice = () => {
+  if (!cookieNotice) return;
   cookieNotice.hidden = false;
   requestAnimationFrame(() => cookieNotice.classList.add('shown'));
-}
+};
 
-const saveAnalyticsChoice = (choice) => {
-  try {
-    localStorage.setItem(ANALYTICS_CONSENT_KEY, choice);
-    localStorage.removeItem('fgn_cookie_notice');
-  } catch (error) {
-    // The choice remains active for the current page if storage is unavailable.
-  }
+const hideCookieNotice = () => {
   cookieNotice?.classList.remove('shown');
   setTimeout(() => {
     if (cookieNotice) cookieNotice.hidden = true;
   }, 250);
+};
+
+if (analyticsConsent !== 'granted' && analyticsConsent !== 'denied') showCookieNotice();
+
+const clearMetrikaStorage = () => {
+  document.cookie.split(';').forEach((part) => {
+    const name = part.split('=')[0].trim();
+    if (name.startsWith('_ym_')) {
+      document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+    }
+  });
+  try {
+    Object.keys(localStorage).filter((key) => key.startsWith('_ym')).forEach((key) => localStorage.removeItem(key));
+  } catch (error) {
+    // First-party analytics storage may be unavailable or already empty.
+  }
+};
+
+const stopMetrika = () => {
+  if (typeof window.ym === 'function') {
+    try {
+      window.ym(METRIKA_ID, 'destruct');
+    } catch (error) {
+      // The counter may still be loading; clearing first-party storage is sufficient here.
+    }
+  }
+  clearMetrikaStorage();
+};
+
+const saveAnalyticsChoice = (choice) => {
+  const now = Date.now();
+  try {
+    localStorage.setItem(ANALYTICS_CONSENT_KEY, JSON.stringify({
+      status: choice,
+      decidedAt: now,
+      expiresAt: now + ANALYTICS_CONSENT_TTL,
+    }));
+    localStorage.removeItem('fgn_cookie_notice');
+  } catch (error) {
+    // The choice remains active for the current page if storage is unavailable.
+  }
+  analyticsConsent = choice;
+  hideCookieNotice();
 };
 
 analyticsAccept?.addEventListener('click', () => {
@@ -100,7 +155,12 @@ analyticsAccept?.addEventListener('click', () => {
   loadMetrika();
 });
 
-analyticsDecline?.addEventListener('click', () => saveAnalyticsChoice('denied'));
+analyticsDecline?.addEventListener('click', () => {
+  saveAnalyticsChoice('denied');
+  stopMetrika();
+});
+
+cookieSettingsButtons.forEach((button) => button.addEventListener('click', showCookieNotice));
 
 document.addEventListener('click', (event) => {
   const link = event.target.closest('a');
@@ -115,7 +175,7 @@ document.addEventListener('click', (event) => {
 const form = document.querySelector('#request-form');
 form?.addEventListener('submit', (event) => {
   event.preventDefault();
-  reachGoal('request_submit');
+  reachGoal('email_draft_open');
   const data = new FormData(form);
   const subject = `Заявка с сайта FGN — ${data.get('name') || 'новый клиент'}`;
   const body = [
@@ -125,9 +185,11 @@ form?.addEventListener('submit', (event) => {
     `Партия: ${data.get('volume') || 'не указана'}`,
     `Сырьё: ${data.get('material')}`,
     `Комментарий: ${data.get('message') || 'нет'}`,
+    'Согласие на обработку персональных данных: подтверждено',
+    'Редакция согласия: 20.08.2026',
   ].join('\n');
   const status = document.querySelector('.form-status');
-  if (status) status.textContent = 'Открываем письмо с заполненной заявкой…';
+  if (status) status.textContent = 'Открываем почтовую программу. Письмо будет отправлено только после вашего подтверждения.';
   window.location.href = `mailto:Burunduk.shop@mail.ru?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 });
 
