@@ -172,26 +172,6 @@ document.addEventListener('click', (event) => {
   else if (href === 'start.html' || href.endsWith('/start.html')) reachGoal('start_product_click');
 });
 
-const form = document.querySelector('#request-form');
-form?.addEventListener('submit', (event) => {
-  event.preventDefault();
-  reachGoal('email_draft_open');
-  const data = new FormData(form);
-  const subject = `Заявка с сайта FGN — ${data.get('name') || 'новый клиент'}`;
-  const body = [
-    `Имя: ${data.get('name')}`,
-    `Контакт: ${data.get('contact')}`,
-    `Продукт: ${data.get('product')}`,
-    `Партия: ${data.get('volume') || 'не указана'}`,
-    `Сырьё: ${data.get('material')}`,
-    `Комментарий: ${data.get('message') || 'нет'}`,
-    'Согласие на обработку персональных данных: подтверждено',
-    'Редакция согласия: 20.08.2026',
-  ].join('\n');
-  const status = document.querySelector('.form-status');
-  if (status) status.textContent = 'Открываем почтовую программу. Письмо будет отправлено только после вашего подтверждения.';
-  window.location.href = `mailto:Burunduk.shop@mail.ru?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-});
 
 const year = document.querySelector('#year');
 if (year) year.textContent = new Date().getFullYear();
