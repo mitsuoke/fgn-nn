@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "updated": "2026-08-26",
+  "products": [
+    {
+      "slug": "ezhovik",
+      "active": true,
+      "name": "Ежовик гребенчатый 100%",
+      "short": "60 капсул · 700 мг зерномицелия в 1 капсуле",
+      "category": "БАД к пище",
+      "application": "Источник бета-глюканов",
+      "sku": "3799084658",
+      "ozon": {
+        "active": true,
+        "url": "https://www.ozon.ru/product/ezhovik-grebenchatyy-v-kapsulah-60-shtuk-po-700mg-3799084658/"
+      },
+      "documents": [
+        {
+          "type": "СГР",
+          "active": true,
+          "number": "RU.77.99.88.003.R.003617.12.25",
+          "date": "15.12.2025"
+        }
+      ],
+      "images": {
+        "catalog": "/assets/products/ezhovik/01-main.webp",
+        "gallery": [
+          "/assets/products/ezhovik/01-main.webp",
+          "/assets/products/ezhovik/02-benefits.webp",
+          "/assets/products/ezhovik/03-composition.webp",
+          "/assets/products/ezhovik/04-for-whom.webp"
+        ]
+      }
+    }
+  ]
+}
