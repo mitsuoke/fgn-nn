@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "updated": "2026-08-26",
+  "updated": "2026-08-27",
   "products": [
     {
       "slug": "ezhovik",
       "active": true,
       "name": "Ежовик гребенчатый 100%",
-      "short": "60 капсул · 700 мг зерномицелия в 1 капсуле",
+      "short": "Монокомпонентный БАД на основе зерномицелия гриба Hericium erinaceus.",
       "category": "БАД к пище",
-      "application": "Источник бета-глюканов",
+      "application": "60 капсул · 700 мг в 1 капсуле · источник бета-глюканов",
       "sku": "3799084658",
       "ozon": {
         "active": true,
@@ -23,13 +23,155 @@
         }
       ],
       "images": {
-        "catalog": "/assets/products/ezhovik/01-main.webp",
+        "catalog": "/assets/products/ezhovik/bottle-cutout.png",
         "gallery": [
-          "/assets/products/ezhovik/01-main.webp",
-          "/assets/products/ezhovik/02-benefits.webp",
-          "/assets/products/ezhovik/03-composition.webp",
-          "/assets/products/ezhovik/04-for-whom.webp"
-        ]
+          "/assets/products/ezhovik/benefits.png",
+          "/assets/products/ezhovik/composition.png",
+          "/assets/products/ezhovik/usage.png"
+        ],
+        "bottle": "/assets/products/ezhovik/bottle-cutout.png"
+      },
+      "dose": "700 мг в 1 капсуле",
+      "catalogHighlights": [
+        "60 капсул",
+        "Источник бета-глюканов",
+        "Для ежедневного приёма"
+      ],
+      "theme": {
+        "accent": "#3954b7",
+        "soft": "#f2f5ff"
+      }
+    },
+    {
+      "slug": "brokkoli",
+      "active": true,
+      "name": "Экстракт брокколи",
+      "short": "БАД на основе экстракта брокколи 10:1 в удобном формате капсул.",
+      "category": "БАД к пище",
+      "application": "60 капсул · 500 мг в 1 капсуле · экстракт брокколи 10:1",
+      "sku": "5382215596",
+      "ozon": {
+        "active": true,
+        "url": "https://www.ozon.ru/product/brokkoli-indol-3-karbinol-60-kapsul-po-500mg-vitaminy-dlya-zhenshchin-normalizatsiya-zhenskoy-5382215596/"
+      },
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/brokkoli/bottle-cutout.png",
+        "gallery": [
+          "/assets/products/brokkoli/benefits.png",
+          "/assets/products/brokkoli/composition.png",
+          "/assets/products/brokkoli/usage.png"
+        ],
+        "bottle": "/assets/products/brokkoli/bottle-cutout.png"
+      },
+      "dose": "500 мг в 1 капсуле",
+      "catalogHighlights": [
+        "60 капсул",
+        "Экстракт брокколи 10:1",
+        "Для ежедневного приёма"
+      ],
+      "theme": {
+        "accent": "#0ca56a",
+        "soft": "#effbf6"
+      }
+    },
+    {
+      "slug": "hmel",
+      "active": true,
+      "name": "Хмель",
+      "short": "Растительный комплекс в капсулах с понятным составом и мягкой визуальной подачей.",
+      "category": "БАД к пище",
+      "application": "60 капсул · 320 мг в 1 капсуле · экстракт шишек хмеля",
+      "sku": "5357570682",
+      "ozon": {
+        "active": true,
+        "url": "https://www.ozon.ru/product/hmel-60-kapsul-320mg-mesyachnyy-kurs-ekstrakt-plodov-suhoy-100-5357570682/?hs=1&sh=YssopDoo7g"
+      },
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/hmel/bottle-cutout.png",
+        "gallery": [
+          "/assets/products/hmel/benefits.png",
+          "/assets/products/hmel/composition.png",
+          "/assets/products/hmel/usage.png"
+        ],
+        "bottle": "/assets/products/hmel/bottle-cutout.png"
+      },
+      "dose": "320 мг в 1 капсуле",
+      "catalogHighlights": [
+        "60 капсул",
+        "Растительный состав",
+        "Курсовой приём"
+      ],
+      "theme": {
+        "accent": "#b48b00",
+        "soft": "#fff9e8"
+      }
+    },
+    {
+      "slug": "donnik",
+      "active": true,
+      "name": "Донник",
+      "short": "Растительный комплекс в капсулах для курсового приёма.",
+      "category": "БАД к пище",
+      "application": "60 капсул · 320 мг в 1 капсуле · растительный состав",
+      "sku": "2124477837",
+      "ozon": {
+        "active": true,
+        "url": "https://www.ozon.ru/product/donnik-60-kapsul-320-mg-mesyachnyy-kurs-ekstrakt-travy-suhoy-100-2124477837/?hs=1&sh=YssopAw-KA"
+      },
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/donnik/bottle-cutout.png",
+        "gallery": [
+          "/assets/products/donnik/benefits.png",
+          "/assets/products/donnik/composition.png",
+          "/assets/products/donnik/usage.png"
+        ],
+        "bottle": "/assets/products/donnik/bottle-cutout.png"
+      },
+      "dose": "320 мг в 1 капсуле",
+      "catalogHighlights": [
+        "60 капсул",
+        "Растительный состав",
+        "Подходит для курсового приёма"
+      ],
+      "theme": {
+        "accent": "#bccf2e",
+        "soft": "#fbfde9"
+      }
+    },
+    {
+      "slug": "kora-beloy-ivy",
+      "active": true,
+      "name": "Кора белой ивы",
+      "short": "Экстракт коры белой ивы в капсулах с удобным форматом приёма.",
+      "category": "БАД к пище",
+      "application": "60 капсул · 500 мг в 1 капсуле · экстракт коры белой ивы 100%",
+      "sku": "4129269466",
+      "ozon": {
+        "active": true,
+        "url": "https://www.ozon.ru/product/kora-ivy-beloy-mesyachnyy-kurs-60-kapsul-po-0-5g-ekstrakt-kory-suhoy-100-4129269466/?hs=1&sh=YssopPKMHg"
+      },
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/kora-beloy-ivy/bottle-cutout.png",
+        "gallery": [
+          "/assets/products/kora-beloy-ivy/benefits.png",
+          "/assets/products/kora-beloy-ivy/composition.png",
+          "/assets/products/kora-beloy-ivy/usage.png"
+        ],
+        "bottle": "/assets/products/kora-beloy-ivy/bottle-cutout.png"
+      },
+      "dose": "500 мг в 1 капсуле",
+      "catalogHighlights": [
+        "60 капсул",
+        "Экстракт коры белой ивы 100%",
+        "Для взрослых"
+      ],
+      "theme": {
+        "accent": "#2738db",
+        "soft": "#eff2ff"
       }
     }
   ]

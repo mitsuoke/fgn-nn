@@ -85,3 +85,47 @@
   .product-lightbox{padding:12px}
   .product-lightbox img{max-width:96vw;max-height:86vh}
 }
+
+/* ===== Mobile-only product fixes ===== */
+@media (max-width:760px){
+  /* Keep the original mobile hero behavior from the base stylesheet.
+     Only make the opened infographic use the phone screen properly. */
+  .product-lightbox{
+    inset:0 !important;
+    width:100vw !important;
+    height:100dvh !important;
+    padding:0 !important;
+    align-items:center !important;
+    justify-content:center !important;
+    overflow:auto !important;
+    background:rgba(6,10,30,.97) !important;
+  }
+
+  .product-lightbox[aria-hidden="false"]{
+    display:flex !important;
+  }
+
+  .product-lightbox img{
+    display:block !important;
+    width:auto !important;
+    height:auto !important;
+    max-width:100vw !important;
+    max-height:100dvh !important;
+    margin:auto !important;
+    box-shadow:none !important;
+  }
+
+  .product-lightbox-close{
+    position:fixed !important;
+    z-index:10001 !important;
+    top:max(10px,env(safe-area-inset-top)) !important;
+    right:max(10px,env(safe-area-inset-right)) !important;
+    width:44px !important;
+    height:44px !important;
+    background:rgba(6,10,30,.78) !important;
+  }
+
+  .product-lightbox-hint{
+    display:none !important;
+  }
+}
