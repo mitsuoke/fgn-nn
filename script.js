@@ -23,6 +23,48 @@ mobileNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click'
   document.body.classList.remove('menu-open');
 }));
 
+const productCarousel = document.querySelector('[data-product-carousel]');
+const productTrack = productCarousel?.querySelector('[data-carousel-track]');
+const productPrev = productCarousel?.querySelector('[data-carousel-prev]');
+const productNext = productCarousel?.querySelector('[data-carousel-next]');
+
+if (productTrack && productPrev && productNext) {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let carouselFrame = 0;
+
+  const carouselStep = () => {
+    const card = productTrack.querySelector('.product-card');
+    if (!card) return productTrack.clientWidth;
+    const gap = Number.parseFloat(getComputedStyle(productTrack).gap) || 0;
+    return card.getBoundingClientRect().width + gap;
+  };
+
+  const updateCarouselButtons = () => {
+    const maxScroll = Math.max(0, productTrack.scrollWidth - productTrack.clientWidth);
+    productPrev.disabled = productTrack.scrollLeft <= 2;
+    productNext.disabled = productTrack.scrollLeft >= maxScroll - 2;
+  };
+
+  const moveCarousel = (direction) => productTrack.scrollBy({
+    left: carouselStep() * direction,
+    behavior: reducedMotion.matches ? 'auto' : 'smooth',
+  });
+
+  productPrev.addEventListener('click', () => moveCarousel(-1));
+  productNext.addEventListener('click', () => moveCarousel(1));
+  productTrack.addEventListener('keydown', (event) => {
+    if (event.target !== productTrack || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    moveCarousel(event.key === 'ArrowLeft' ? -1 : 1);
+  });
+  productTrack.addEventListener('scroll', () => {
+    cancelAnimationFrame(carouselFrame);
+    carouselFrame = requestAnimationFrame(updateCarouselButtons);
+  }, { passive: true });
+  window.addEventListener('resize', updateCarouselButtons);
+  requestAnimationFrame(updateCarouselButtons);
+}
+
 if ('IntersectionObserver' in window) {
   const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
     if (entry.isIntersecting) {
@@ -166,10 +208,16 @@ document.addEventListener('click', (event) => {
   const link = event.target.closest('a');
   if (!link) return;
   const href = link.getAttribute('href') || '';
+  const path = (() => {
+    try { return new URL(link.href, window.location.href).pathname.replace(/\/{2,}/g, '/'); }
+    catch { return ''; }
+  })();
   if (href.startsWith('tel:')) reachGoal('phone_click');
   else if (href.includes('max.ru/')) reachGoal('max_click');
   else if (href.startsWith('mailto:')) reachGoal('email_click');
-  else if (href === 'start.html' || href.endsWith('/start.html')) reachGoal('start_product_click');
+  else if (/\/start\.html$/.test(path)) reachGoal('start_product_click');
+  else if (/\/products\/?$/.test(path)) reachGoal('catalog_click');
+  else if (/\/products\/[^/]+\/?$/.test(path)) reachGoal('product_card_click');
 });
 
 
