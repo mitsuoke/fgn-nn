@@ -1,0 +1,102 @@
+/* BIO HART — page-specific layout only.
+   Shared FGN styles remain in ../../styles.css and ../../product-detail.css. */
+
+.bio-hart-page .product-gallery{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+
+.bio-hart-page .product-gallery-button{
+  min-width:0;
+}
+
+.bio-hart-page .product-gallery-button img{
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:cover;
+}
+
+.bio-hart-page .product-info-grid{
+  grid-template-columns:1.15fr .85fr;
+}
+
+.bio-hart-page .product-info-block+.product-info-block{
+  border-left:1px solid var(--line);
+}
+
+.bio-hart-page .bio-hart-components{
+  margin:18px 0 0;
+  padding:0;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px 18px;
+  list-style:none;
+}
+
+.bio-hart-page .bio-hart-components li{
+  position:relative;
+  padding-left:16px;
+  color:var(--ink);
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+}
+
+.bio-hart-page .bio-hart-components li::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:.48em;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--blue);
+}
+
+.bio-hart-page .bio-hart-course-note{
+  margin-top:14px!important;
+  padding:12px 14px;
+  border-left:3px solid var(--blue);
+  background:#f6f7fb;
+  color:#5e6477!important;
+}
+
+@media(max-width:1100px){
+  .bio-hart-page .product-gallery{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px;
+  }
+}
+
+@media(max-width:760px){
+  .bio-hart-page .product-hero-media{
+    height:310px;
+  }
+
+  .bio-hart-page .product-hero-media img{
+    object-position:70% center;
+  }
+
+  .bio-hart-page .product-gallery{
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+
+  .bio-hart-page .product-gallery-button img{
+    aspect-ratio:auto;
+    object-fit:contain;
+  }
+
+  .bio-hart-page .product-info-grid{
+    grid-template-columns:1fr;
+  }
+
+  .bio-hart-page .product-info-block+.product-info-block{
+    border-left:0;
+    border-top:1px solid var(--line);
+  }
+
+  .bio-hart-page .bio-hart-components{
+    grid-template-columns:1fr;
+  }
+}
