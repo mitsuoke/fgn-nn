@@ -83,14 +83,6 @@
 }
 
 @media(max-width:760px){
-  .psyllium-slim-page .product-hero-media{
-    height:310px;
-  }
-
-  .psyllium-slim-page .product-hero-media img{
-    object-position:72% center;
-  }
-
   .psyllium-slim-page .product-gallery{
     grid-template-columns:1fr;
     gap:14px;

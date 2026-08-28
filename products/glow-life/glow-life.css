@@ -14,8 +14,6 @@
   .glow-life-page .product-gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 }
 @media(max-width:760px){
-  .glow-life-page .product-hero-media{height:310px}
-  .glow-life-page .product-hero-media img{object-position:70% center}
   .glow-life-page .product-gallery{grid-template-columns:1fr;gap:14px}
   .glow-life-page .product-gallery-button img{aspect-ratio:auto;object-fit:contain}
   .glow-life-page .product-info-grid{grid-template-columns:1fr}

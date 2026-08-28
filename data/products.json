@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updated": "2026-08-27",
+  "version": 2,
+  "updated": "2026-08-28",
   "products": [
     {
       "slug": "ezhovik",
@@ -10,169 +10,206 @@
       "category": "БАД к пище",
       "application": "60 капсул · 700 мг в 1 капсуле · источник бета-глюканов",
       "sku": "3799084658",
-      "ozon": {
-        "active": true,
-        "url": "https://www.ozon.ru/product/ezhovik-grebenchatyy-v-kapsulah-60-shtuk-po-700mg-3799084658/"
-      },
-      "documents": [
-        {
-          "type": "СГР",
-          "active": true,
-          "number": "RU.77.99.88.003.R.003617.12.25",
-          "date": "15.12.2025"
-        }
-      ],
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/ezhovik-grebenchatyy-v-kapsulah-60-shtuk-po-700mg-3799084658/"},
+      "documents": [{"type": "СГР", "active": true, "number": "RU.77.99.88.003.R.003617.12.25", "date": "15.12.2025"}],
       "images": {
-        "catalog": "/assets/products/ezhovik/bottle-cutout.png",
-        "gallery": [
-          "/assets/products/ezhovik/benefits.png",
-          "/assets/products/ezhovik/composition.png",
-          "/assets/products/ezhovik/usage.png"
-        ],
+        "catalog": "/assets/products/ezhovik/bottle-catalog.webp",
+        "gallery": ["/assets/products/ezhovik/benefits.webp", "/assets/products/ezhovik/composition.webp", "/assets/products/ezhovik/usage.webp"],
         "bottle": "/assets/products/ezhovik/bottle-cutout.png"
       },
       "dose": "700 мг в 1 капсуле",
-      "catalogHighlights": [
-        "60 капсул",
-        "Источник бета-глюканов",
-        "Для ежедневного приёма"
-      ],
-      "theme": {
-        "accent": "#3954b7",
-        "soft": "#f2f5ff"
-      }
-    },
-    {
-      "slug": "brokkoli",
-      "active": true,
-      "name": "Экстракт брокколи",
-      "short": "БАД на основе экстракта брокколи 10:1 в удобном формате капсул.",
-      "category": "БАД к пище",
-      "application": "60 капсул · 500 мг в 1 капсуле · экстракт брокколи 10:1",
-      "sku": "5382215596",
-      "ozon": {
-        "active": true,
-        "url": "https://www.ozon.ru/product/brokkoli-indol-3-karbinol-60-kapsul-po-500mg-vitaminy-dlya-zhenshchin-normalizatsiya-zhenskoy-5382215596/"
-      },
-      "documents": [],
-      "images": {
-        "catalog": "/assets/products/brokkoli/bottle-cutout.png",
-        "gallery": [
-          "/assets/products/brokkoli/benefits.png",
-          "/assets/products/brokkoli/composition.png",
-          "/assets/products/brokkoli/usage.png"
-        ],
-        "bottle": "/assets/products/brokkoli/bottle-cutout.png"
-      },
-      "dose": "500 мг в 1 капсуле",
-      "catalogHighlights": [
-        "60 капсул",
-        "Экстракт брокколи 10:1",
-        "Для ежедневного приёма"
-      ],
-      "theme": {
-        "accent": "#0ca56a",
-        "soft": "#effbf6"
-      }
+      "catalogHighlights": ["60 капсул", "Источник бета-глюканов", "Для ежедневного приёма"],
+      "theme": {"accent": "#3954b7", "soft": "#f2f5ff"}
     },
     {
       "slug": "hmel",
       "active": true,
       "name": "Хмель",
-      "short": "Растительный комплекс в капсулах с понятным составом и мягкой визуальной подачей.",
-      "category": "БАД к пище",
+      "short": "Пищевая добавка на основе экстракта шишек хмеля.",
+      "category": "Пищевая добавка",
       "application": "60 капсул · 320 мг в 1 капсуле · экстракт шишек хмеля",
       "sku": "5357570682",
-      "ozon": {
-        "active": true,
-        "url": "https://www.ozon.ru/product/hmel-60-kapsul-320mg-mesyachnyy-kurs-ekstrakt-plodov-suhoy-100-5357570682/?hs=1&sh=YssopDoo7g"
-      },
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/hmel-60-kapsul-320mg-mesyachnyy-kurs-ekstrakt-plodov-suhoy-100-5357570682/"},
       "documents": [],
       "images": {
-        "catalog": "/assets/products/hmel/bottle-cutout.png",
-        "gallery": [
-          "/assets/products/hmel/benefits.png",
-          "/assets/products/hmel/composition.png",
-          "/assets/products/hmel/usage.png"
-        ],
+        "catalog": "/assets/products/hmel/bottle-catalog.webp",
+        "gallery": ["/assets/products/hmel/benefits.webp", "/assets/products/hmel/composition.webp", "/assets/products/hmel/usage.webp"],
         "bottle": "/assets/products/hmel/bottle-cutout.png"
       },
       "dose": "320 мг в 1 капсуле",
-      "catalogHighlights": [
-        "60 капсул",
-        "Растительный состав",
-        "Курсовой приём"
-      ],
-      "theme": {
-        "accent": "#b48b00",
-        "soft": "#fff9e8"
-      }
+      "catalogHighlights": ["60 капсул", "Экстракт шишек хмеля", "Для взрослых"],
+      "theme": {"accent": "#b48b00", "soft": "#fff9e8"}
+    },
+    {
+      "slug": "brokkoli",
+      "active": true,
+      "name": "Экстракт брокколи",
+      "short": "Пищевая добавка на основе экстракта брокколи 10:1.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 500 мг в 1 капсуле · экстракт брокколи 10:1",
+      "sku": "5382215596",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/brokkoli-indol-3-karbinol-60-kapsul-po-500mg-vitaminy-dlya-zhenshchin-normalizatsiya-zhenskoy-5382215596/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/brokkoli/bottle-catalog.webp",
+        "gallery": ["/assets/products/brokkoli/benefits.webp", "/assets/products/brokkoli/composition.webp", "/assets/products/brokkoli/usage.webp"],
+        "bottle": "/assets/products/brokkoli/bottle-cutout.png"
+      },
+      "dose": "500 мг в 1 капсуле",
+      "catalogHighlights": ["60 капсул", "Экстракт брокколи 10:1", "Для взрослых"],
+      "theme": {"accent": "#0ca56a", "soft": "#effbf6"}
     },
     {
       "slug": "donnik",
       "active": true,
       "name": "Донник",
-      "short": "Растительный комплекс в капсулах для курсового приёма.",
-      "category": "БАД к пище",
-      "application": "60 капсул · 320 мг в 1 капсуле · растительный состав",
+      "short": "Пищевая добавка на основе растительных компонентов донника.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 320 мг в 1 капсуле · экстракт донника",
       "sku": "2124477837",
-      "ozon": {
-        "active": true,
-        "url": "https://www.ozon.ru/product/donnik-60-kapsul-320-mg-mesyachnyy-kurs-ekstrakt-travy-suhoy-100-2124477837/?hs=1&sh=YssopAw-KA"
-      },
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/donnik-60-kapsul-320-mg-mesyachnyy-kurs-ekstrakt-travy-suhoy-100-2124477837/"},
       "documents": [],
       "images": {
-        "catalog": "/assets/products/donnik/bottle-cutout.png",
-        "gallery": [
-          "/assets/products/donnik/benefits.png",
-          "/assets/products/donnik/composition.png",
-          "/assets/products/donnik/usage.png"
-        ],
+        "catalog": "/assets/products/donnik/bottle-catalog.webp",
+        "gallery": ["/assets/products/donnik/benefits.webp", "/assets/products/donnik/composition.webp", "/assets/products/donnik/usage.webp"],
         "bottle": "/assets/products/donnik/bottle-cutout.png"
       },
       "dose": "320 мг в 1 капсуле",
-      "catalogHighlights": [
-        "60 капсул",
-        "Растительный состав",
-        "Подходит для курсового приёма"
-      ],
-      "theme": {
-        "accent": "#bccf2e",
-        "soft": "#fbfde9"
-      }
+      "catalogHighlights": ["60 капсул", "Экстракт донника", "Для взрослых"],
+      "theme": {"accent": "#bccf2e", "soft": "#fbfde9"}
     },
     {
       "slug": "kora-beloy-ivy",
       "active": true,
       "name": "Кора белой ивы",
-      "short": "Экстракт коры белой ивы в капсулах с удобным форматом приёма.",
-      "category": "БАД к пище",
-      "application": "60 капсул · 500 мг в 1 капсуле · экстракт коры белой ивы 100%",
+      "short": "Пищевая добавка на основе экстракта коры белой ивы.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 500 мг в 1 капсуле · экстракт коры белой ивы",
       "sku": "4129269466",
-      "ozon": {
-        "active": true,
-        "url": "https://www.ozon.ru/product/kora-ivy-beloy-mesyachnyy-kurs-60-kapsul-po-0-5g-ekstrakt-kory-suhoy-100-4129269466/?hs=1&sh=YssopPKMHg"
-      },
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/kora-ivy-beloy-mesyachnyy-kurs-60-kapsul-po-0-5g-ekstrakt-kory-suhoy-100-4129269466/"},
       "documents": [],
       "images": {
-        "catalog": "/assets/products/kora-beloy-ivy/bottle-cutout.png",
-        "gallery": [
-          "/assets/products/kora-beloy-ivy/benefits.png",
-          "/assets/products/kora-beloy-ivy/composition.png",
-          "/assets/products/kora-beloy-ivy/usage.png"
-        ],
+        "catalog": "/assets/products/kora-beloy-ivy/bottle-catalog.webp",
+        "gallery": ["/assets/products/kora-beloy-ivy/benefits.webp", "/assets/products/kora-beloy-ivy/composition.webp", "/assets/products/kora-beloy-ivy/usage.webp"],
         "bottle": "/assets/products/kora-beloy-ivy/bottle-cutout.png"
       },
       "dose": "500 мг в 1 капсуле",
-      "catalogHighlights": [
-        "60 капсул",
-        "Экстракт коры белой ивы 100%",
-        "Для взрослых"
-      ],
-      "theme": {
-        "accent": "#2738db",
-        "soft": "#eff2ff"
-      }
+      "catalogHighlights": ["60 капсул", "Экстракт коры белой ивы", "Для взрослых"],
+      "theme": {"accent": "#2738db", "soft": "#eff2ff"}
+    },
+    {
+      "slug": "chesnok",
+      "active": true,
+      "name": "Экстракт чеснока AGLIO",
+      "short": "Пищевая добавка с чесноком 100% в капсулах.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 600 мг в 1 капсуле · чеснок 100%",
+      "sku": "5382397433",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/naturalnyy-ekstrakt-chesnoka-altayskogo-dlya-immuniteta-snizheniya-holesterina-ot-davleniya-5382397433/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/chesnok/bottle-catalog.webp",
+        "gallery": ["/assets/products/chesnok/benefits.webp", "/assets/products/chesnok/composition.webp", "/assets/products/chesnok/usage.webp"],
+        "bottle": "/assets/products/chesnok/bottle-cutout.png"
+      },
+      "dose": "600 мг в 1 капсуле",
+      "catalogHighlights": ["60 капсул", "Чеснок 100%", "Для взрослых"],
+      "theme": {"accent": "#67aa2d", "soft": "#f3faed"}
+    },
+    {
+      "slug": "bio-hart",
+      "active": true,
+      "name": "БИО ХАРТ",
+      "short": "Пищевая добавка с пятью растительными компонентами.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 500 мг в 1 капсуле · 5 растительных компонентов",
+      "sku": "5260228349",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/kompleks-dlya-serdtsa-i-sosudov-kapsuly-60-sht-vitaminy-5260228349/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/bio-hart/bottle-catalog.webp",
+        "gallery": ["/assets/products/bio-hart/benefits.webp", "/assets/products/bio-hart/composition.webp", "/assets/products/bio-hart/usage.webp", "/assets/products/bio-hart/formula.webp"],
+        "bottle": "/assets/products/bio-hart/bottle-cutout.png"
+      },
+      "dose": "500 мг в 1 капсуле",
+      "catalogHighlights": ["60 капсул", "5 растительных компонентов", "Для взрослых"],
+      "theme": {"accent": "#c72735", "soft": "#fff1f2"}
+    },
+    {
+      "slug": "glow-life",
+      "active": true,
+      "name": "ГЛОУ ЛАЙФ",
+      "short": "Пищевая добавка для женщин с шестью растительными компонентами.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 500 мг в 1 капсуле · 6 растительных компонентов",
+      "sku": "5352213237",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/vitaminy-dlya-zhenshchin-multivitaminy-dlya-krasoty-energii-i-molodosti-dlya-vzroslyh-kapsuly-60-sht-5352213237/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/glow-life/bottle-catalog.webp",
+        "gallery": ["/assets/products/glow-life/benefits.webp", "/assets/products/glow-life/composition.webp", "/assets/products/glow-life/usage.webp", "/assets/products/glow-life/formula.webp"],
+        "bottle": "/assets/products/glow-life/bottle-cutout.png"
+      },
+      "dose": "500 мг в 1 капсуле",
+      "catalogHighlights": ["60 капсул", "6 растительных компонентов", "Для женщин 18+"],
+      "theme": {"accent": "#bd254d", "soft": "#fff1f5"}
+    },
+    {
+      "slug": "pueraria-mirifica",
+      "active": true,
+      "name": "Пуэрария Мирифика",
+      "short": "Пищевая добавка на основе экстракта пуэрарии мирифика.",
+      "category": "Пищевая добавка",
+      "application": "60 капсул · 250 мг в 1 капсуле · изофлавоны 40%",
+      "sku": "1746015264",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/ekstrakt-puerarii-mirifika-60-kapsul-250mg-dlya-zhenskogo-zdorovya-rastitelnye-1746015264/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/pueraria-mirifica/bottle-catalog.webp",
+        "gallery": ["/assets/products/pueraria-mirifica/benefits.webp", "/assets/products/pueraria-mirifica/composition.webp", "/assets/products/pueraria-mirifica/usage.webp"],
+        "bottle": "/assets/products/pueraria-mirifica/bottle-cutout.png"
+      },
+      "dose": "250 мг в 1 капсуле",
+      "catalogHighlights": ["60 капсул", "Изофлавоны 40%", "Для женщин 18+"],
+      "theme": {"accent": "#bf2966", "soft": "#fff0f7"}
+    },
+    {
+      "slug": "psyllium",
+      "active": true,
+      "name": "Псиллиум FGN",
+      "short": "Пищевая добавка на основе шелухи семян индийского подорожника.",
+      "category": "Пищевая добавка",
+      "application": "120 капсул · 400 мг в 1 капсуле · шелуха семян подорожника",
+      "sku": "5202913868",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/psillium-v-kapsulah-120-sht-po-400-mg-sheluha-semeni-podorozhnika-kletchatka-5202913868/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/psyllium/bottle-catalog.webp",
+        "gallery": ["/assets/products/psyllium/benefits.webp", "/assets/products/psyllium/composition.webp", "/assets/products/psyllium/usage.webp"],
+        "bottle": "/assets/products/psyllium/bottle-cutout.png"
+      },
+      "dose": "400 мг в 1 капсуле",
+      "catalogHighlights": ["120 капсул", "Шелуха семян подорожника", "Пищевые волокна"],
+      "theme": {"accent": "#bf8a19", "soft": "#fff8e8"}
+    },
+    {
+      "slug": "psyllium-slim",
+      "active": true,
+      "name": "Псиллиум Слим со сливой",
+      "short": "Пищевая добавка на основе шелухи семян индийского подорожника и сливы.",
+      "category": "Пищевая добавка",
+      "application": "120 капсул · 400 мг в 1 капсуле · псиллиум и слива",
+      "sku": "5232973831",
+      "ozon": {"active": true, "url": "https://www.ozon.ru/product/psillium-sliva-120-sht-po-400-mg-sheluha-semeni-podorozhnika-v-kapsulah-kletchatka-dlya-pohudeniya-5232973831/"},
+      "documents": [],
+      "images": {
+        "catalog": "/assets/products/psyllium-slim/bottle-catalog.webp",
+        "gallery": ["/assets/products/psyllium-slim/benefits.webp", "/assets/products/psyllium-slim/composition.webp", "/assets/products/psyllium-slim/usage.webp", "/assets/products/psyllium-slim/formula.webp"],
+        "bottle": "/assets/products/psyllium-slim/bottle-cutout.png"
+      },
+      "dose": "400 мг в 1 капсуле",
+      "catalogHighlights": ["120 капсул", "Псиллиум и слива", "Пищевые волокна"],
+      "theme": {"accent": "#a84394", "soft": "#fff1fc"}
     }
   ]
 }

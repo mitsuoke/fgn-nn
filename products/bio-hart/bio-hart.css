@@ -69,14 +69,6 @@
 }
 
 @media(max-width:760px){
-  .bio-hart-page .product-hero-media{
-    height:310px;
-  }
-
-  .bio-hart-page .product-hero-media img{
-    object-position:70% center;
-  }
-
   .bio-hart-page .product-gallery{
     grid-template-columns:1fr;
     gap:14px;

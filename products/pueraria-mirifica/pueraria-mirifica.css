@@ -36,14 +36,6 @@
 }
 
 @media(max-width:760px){
-  .pueraria-page .product-hero-media{
-    height:310px;
-  }
-
-  .pueraria-page .product-hero-media img{
-    object-position:72% center;
-  }
-
   .pueraria-page .product-info-grid{
     grid-template-columns:1fr;
   }
