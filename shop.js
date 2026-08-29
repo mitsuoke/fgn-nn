@@ -22,6 +22,12 @@
     document.querySelectorAll('[data-product-name]').forEach((el) => { el.textContent = product.name; });
     document.querySelectorAll('[data-product-short]').forEach((el) => { el.textContent = product.short || ''; });
     document.querySelectorAll('[data-product-application]').forEach((el) => { el.textContent = product.application || ''; });
+    document.querySelectorAll('[data-product-description]').forEach((el) => { el.textContent = product.description || product.short || ''; });
+    document.querySelectorAll('[data-product-warning]').forEach((el) => { el.textContent = product.warning || ''; });
+    document.querySelectorAll('[data-product-facts]').forEach((list) => {
+      const facts = Array.isArray(product.facts) ? product.facts.filter(Boolean).slice(0, 3) : [];
+      if (facts.length) list.innerHTML = facts.map((fact) => `<div class="product-fact">${escapeHtml(fact)}</div>`).join('');
+    });
     const ozon = product.ozon || {};
     document.querySelectorAll('[data-ozon-link]').forEach((link) => { if (ozon.active && ozon.url) { link.href = ozon.url; link.hidden = false; } else { link.hidden = true; } });
     document.querySelectorAll('[data-ozon-unavailable]').forEach((el) => { el.hidden = Boolean(ozon.active && ozon.url); });

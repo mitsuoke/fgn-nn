@@ -51,12 +51,14 @@
     lastTrigger = trigger;
     show(Array.from(triggers).indexOf(trigger));
     lightbox.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('lightbox-open');
     document.documentElement.style.overflow = 'hidden';
     closeButton?.focus();
   };
 
   const close = () => {
     lightbox.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('lightbox-open');
     lightboxImage.src = '';
     document.documentElement.style.overflow = '';
     lastTrigger?.focus();
