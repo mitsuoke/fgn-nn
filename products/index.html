@@ -21,12 +21,13 @@
   <meta property="og:image" content="https://fgn-nn.ru/assets/products/ezhovik/bottle-catalog.webp">
   <meta name="twitter:card" content="summary_large_image">
 
-  <link rel="stylesheet" href="../styles.css?v=17">
+  <link rel="stylesheet" href="../styles.css?v=18">
   <link rel="stylesheet" href="../products-catalog.css?v=9">
   <script src="../script.js?v=10" defer></script>
+  <script src="../shop.js?v=4" defer></script>
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Главная","item":"https://fgn-nn.ru/"},{"@type":"ListItem","position":2,"name":"Продукция","item":"https://fgn-nn.ru/products/"}]},{"@type":"ItemList","name":"Продукция FGN","url":"https://fgn-nn.ru/products/","numberOfItems":11,"itemListElement":[{"@type":"ListItem","position":1,"url":"https://fgn-nn.ru/products/hmel/","name":"Хмель FGN"},{"@type":"ListItem","position":2,"url":"https://fgn-nn.ru/products/brokkoli/","name":"Экстракт брокколи FGN"},{"@type":"ListItem","position":3,"url":"https://fgn-nn.ru/products/donnik/","name":"Донник FGN"},{"@type":"ListItem","position":4,"url":"https://fgn-nn.ru/products/kora-beloy-ivy/","name":"Кора белой ивы FGN"},{"@type":"ListItem","position":5,"url":"https://fgn-nn.ru/products/ezhovik/","name":"Ежовик гребенчатый FGN"},{"@type":"ListItem","position":6,"url":"https://fgn-nn.ru/products/chesnok/","name":"Экстракт чеснока AGLIO FGN"},{"@type":"ListItem","position":7,"url":"https://fgn-nn.ru/products/bio-hart/","name":"БИО ХАРТ FGN"},{"@type":"ListItem","position":8,"url":"https://fgn-nn.ru/products/glow-life/","name":"ГЛОУ ЛАЙФ FGN"},{"@type":"ListItem","position":9,"url":"https://fgn-nn.ru/products/pueraria-mirifica/","name":"Пуэрария Мирифика FGN"},{"@type":"ListItem","position":10,"url":"https://fgn-nn.ru/products/psyllium/","name":"Псиллиум FGN"},{"@type":"ListItem","position":11,"url":"https://fgn-nn.ru/products/psyllium-slim/","name":"Псиллиум Слим FGN"}]}]}</script>
 </head>
-<body class="products-catalog-page has-mobile-quick">
+<body class="products-catalog-page has-mobile-quick" data-products-src="../data/products.json" data-site-root="../">
   <a class="skip-link" href="#main">К содержанию</a>
 
   <header class="site-header scrolled" id="top">
@@ -77,8 +78,8 @@
           </div>
         </div>
 
-        <div class="catalog-grid">
-          <article class="product-card product-card-hmel">
+        <div class="catalog-grid" data-products-grid data-product-collection="catalog">
+          <article class="product-card product-card-hmel" data-product-slug="hmel">
             <a class="product-card-image" href="./hmel/" aria-label="Состав и применение продукта Хмель">
               <img src="../assets/products/hmel/bottle-catalog.webp" alt="Хмель FGN, 60 капсул по 320 мг" width="450" height="600" loading="eager" fetchpriority="high">
             </a>
@@ -93,7 +94,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-brokkoli">
+          <article class="product-card product-card-brokkoli" data-product-slug="brokkoli">
             <a class="product-card-image" href="./brokkoli/" aria-label="Состав и применение продукта Экстракт брокколи">
               <img src="../assets/products/brokkoli/bottle-catalog.webp" alt="Экстракт брокколи FGN, 60 капсул по 500 мг" width="450" height="600" loading="eager">
             </a>
@@ -108,7 +109,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-donnik">
+          <article class="product-card product-card-donnik" data-product-slug="donnik">
             <a class="product-card-image" href="./donnik/" aria-label="Состав и применение продукта Донник">
               <img src="../assets/products/donnik/bottle-catalog.webp" alt="Донник FGN, 60 капсул по 320 мг" width="450" height="600" loading="lazy">
             </a>
@@ -123,7 +124,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-iva">
+          <article class="product-card product-card-iva" data-product-slug="kora-beloy-ivy">
             <a class="product-card-image" href="./kora-beloy-ivy/" aria-label="Состав и применение продукта Кора белой ивы">
               <img src="../assets/products/kora-beloy-ivy/bottle-catalog.webp" alt="Кора белой ивы FGN, 60 капсул по 500 мг" width="450" height="600" loading="lazy">
             </a>
@@ -138,7 +139,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-ezhovik">
+          <article class="product-card product-card-ezhovik" data-product-slug="ezhovik">
             <a class="product-card-image" href="./ezhovik/" aria-label="Состав и применение продукта Ежовик гребенчатый">
               <img src="../assets/products/ezhovik/bottle-catalog.webp" alt="Ежовик гребенчатый FGN, 60 капсул по 700 мг" width="450" height="600" loading="lazy">
             </a>
@@ -153,7 +154,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-chesnok">
+          <article class="product-card product-card-chesnok" data-product-slug="chesnok">
             <a class="product-card-image" href="./chesnok/" aria-label="Состав и применение продукта Экстракт чеснока">
               <img src="../assets/products/chesnok/bottle-catalog.webp" alt="Экстракт чеснока AGLIO FGN, 60 капсул по 600 мг" width="450" height="600" loading="lazy">
             </a>
@@ -168,7 +169,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-biohart">
+          <article class="product-card product-card-biohart" data-product-slug="bio-hart">
             <a class="product-card-image" href="./bio-hart/" aria-label="Состав и применение продукта БИО ХАРТ">
               <img src="../assets/products/bio-hart/bottle-catalog.webp" alt="БИО ХАРТ FGN, 60 капсул по 500 мг" width="450" height="600" loading="lazy">
             </a>
@@ -183,7 +184,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-glowlife">
+          <article class="product-card product-card-glowlife" data-product-slug="glow-life">
             <a class="product-card-image" href="./glow-life/" aria-label="Состав и применение продукта ГЛОУ ЛАЙФ">
               <img src="../assets/products/glow-life/bottle-catalog.webp" alt="ГЛОУ ЛАЙФ FGN, 60 капсул по 500 мг" width="450" height="600" loading="lazy">
             </a>
@@ -198,7 +199,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-pueraria">
+          <article class="product-card product-card-pueraria" data-product-slug="pueraria-mirifica">
             <a class="product-card-image" href="./pueraria-mirifica/" aria-label="Состав и применение продукта Пуэрария Мирифика">
               <img src="../assets/products/pueraria-mirifica/bottle-catalog.webp" alt="Пуэрария Мирифика FGN, 60 капсул по 250 мг" width="450" height="600" loading="lazy">
             </a>
@@ -213,7 +214,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-psyllium">
+          <article class="product-card product-card-psyllium" data-product-slug="psyllium">
             <a class="product-card-image" href="./psyllium/" aria-label="Состав и применение продукта Псиллиум">
               <img src="../assets/products/psyllium/bottle-catalog.webp" alt="Псиллиум FGN, 120 капсул по 400 мг" width="450" height="600" loading="lazy">
             </a>
@@ -228,7 +229,7 @@
             </div>
           </article>
 
-          <article class="product-card product-card-psylliumslim">
+          <article class="product-card product-card-psylliumslim" data-product-slug="psyllium-slim">
             <a class="product-card-image" href="./psyllium-slim/" aria-label="Состав и применение продукта Псиллиум Слим со сливой">
               <img src="../assets/products/psyllium-slim/bottle-catalog.webp" alt="Псиллиум Слим FGN, 120 капсул по 400 мг" width="450" height="600" loading="lazy">
             </a>

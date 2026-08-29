@@ -4,6 +4,7 @@
   "products": [
     {
       "slug": "ezhovik",
+      "catalogOrder": 5,
       "active": true,
       "name": "Ежовик гребенчатый 100%",
       "short": "Монокомпонентный БАД на основе зерномицелия гриба Hericium erinaceus.",
@@ -21,11 +22,13 @@
         "bottle": "/assets/products/ezhovik/bottle-cutout.png"
       },
       "dose": "700 мг в 1 капсуле",
+      "catalog": {"name": "Ежовик гребенчатый", "package": "60 капсул", "capsule": "700 мг", "composition": "Зерномицелий ежовика"},
       "catalogHighlights": ["60 капсул", "Источник бета-глюканов", "Для ежедневного приёма"],
       "theme": {"accent": "#3954b7", "soft": "#f2f5ff"}
     },
     {
       "slug": "hmel",
+      "catalogOrder": 1,
       "active": true,
       "name": "Хмель",
       "short": "Пищевая добавка на основе экстракта шишек хмеля.",
@@ -43,11 +46,13 @@
         "bottle": "/assets/products/hmel/bottle-cutout.png"
       },
       "dose": "320 мг в 1 капсуле",
+      "catalog": {"name": "Хмель", "package": "60 капсул", "capsule": "320 мг", "composition": "Экстракт шишек хмеля"},
       "catalogHighlights": ["60 капсул", "Экстракт шишек хмеля", "Для взрослых"],
       "theme": {"accent": "#b48b00", "soft": "#fff9e8"}
     },
     {
       "slug": "brokkoli",
+      "catalogOrder": 2,
       "active": true,
       "name": "Экстракт брокколи",
       "short": "Пищевая добавка на основе экстракта брокколи 10:1.",
@@ -65,11 +70,13 @@
         "bottle": "/assets/products/brokkoli/bottle-cutout.png"
       },
       "dose": "500 мг в 1 капсуле",
+      "catalog": {"name": "Экстракт брокколи", "package": "60 капсул", "capsule": "500 мг", "composition": "Экстракт брокколи 10:1"},
       "catalogHighlights": ["60 капсул", "Экстракт брокколи 10:1", "Для взрослых"],
       "theme": {"accent": "#0ca56a", "soft": "#effbf6"}
     },
     {
       "slug": "donnik",
+      "catalogOrder": 3,
       "active": true,
       "name": "Донник",
       "short": "Пищевая добавка на основе растительных компонентов донника.",
@@ -87,11 +94,13 @@
         "bottle": "/assets/products/donnik/bottle-cutout.png"
       },
       "dose": "320 мг в 1 капсуле",
+      "catalog": {"name": "Донник", "package": "60 капсул", "capsule": "320 мг", "composition": "Экстракт донника"},
       "catalogHighlights": ["60 капсул", "Экстракт донника", "Для взрослых"],
       "theme": {"accent": "#bccf2e", "soft": "#fbfde9"}
     },
     {
       "slug": "kora-beloy-ivy",
+      "catalogOrder": 4,
       "active": true,
       "name": "Кора белой ивы",
       "short": "Пищевая добавка на основе экстракта коры белой ивы.",
@@ -109,11 +118,13 @@
         "bottle": "/assets/products/kora-beloy-ivy/bottle-cutout.png"
       },
       "dose": "500 мг в 1 капсуле",
+      "catalog": {"name": "Кора белой ивы", "package": "60 капсул", "capsule": "500 мг", "composition": "Экстракт коры белой ивы"},
       "catalogHighlights": ["60 капсул", "Экстракт коры белой ивы", "Для взрослых"],
       "theme": {"accent": "#2738db", "soft": "#eff2ff"}
     },
     {
       "slug": "chesnok",
+      "catalogOrder": 6,
       "active": true,
       "name": "Экстракт чеснока AGLIO",
       "short": "Пищевая добавка с чесноком 100% в капсулах.",
@@ -131,11 +142,13 @@
         "bottle": "/assets/products/chesnok/bottle-cutout.png"
       },
       "dose": "600 мг в 1 капсуле",
+      "catalog": {"name": "Экстракт чеснока", "package": "60 капсул", "capsule": "600 мг", "composition": "Чеснок 100%"},
       "catalogHighlights": ["60 капсул", "Чеснок 100%", "Для взрослых"],
       "theme": {"accent": "#67aa2d", "soft": "#f3faed"}
     },
     {
       "slug": "bio-hart",
+      "catalogOrder": 7,
       "active": true,
       "name": "БИО ХАРТ",
       "short": "Пищевая добавка с пятью растительными компонентами.",
@@ -153,11 +166,13 @@
         "bottle": "/assets/products/bio-hart/bottle-cutout.png"
       },
       "dose": "500 мг в 1 капсуле",
+      "catalog": {"name": "БИО ХАРТ", "package": "60 капсул", "capsule": "500 мг", "composition": "5 растительных компонентов"},
       "catalogHighlights": ["60 капсул", "5 растительных компонентов", "Для взрослых"],
       "theme": {"accent": "#c72735", "soft": "#fff1f2"}
     },
     {
       "slug": "glow-life",
+      "catalogOrder": 8,
       "active": true,
       "name": "ГЛОУ ЛАЙФ",
       "short": "Пищевая добавка для женщин с шестью растительными компонентами.",
@@ -175,11 +190,13 @@
         "bottle": "/assets/products/glow-life/bottle-cutout.png"
       },
       "dose": "500 мг в 1 капсуле",
+      "catalog": {"name": "ГЛОУ ЛАЙФ", "package": "60 капсул", "capsule": "500 мг", "composition": "6 растительных компонентов"},
       "catalogHighlights": ["60 капсул", "6 растительных компонентов", "Для женщин 18+"],
       "theme": {"accent": "#bd254d", "soft": "#fff1f5"}
     },
     {
       "slug": "pueraria-mirifica",
+      "catalogOrder": 9,
       "active": true,
       "name": "Пуэрария Мирифика",
       "short": "Пищевая добавка на основе экстракта пуэрарии мирифика.",
@@ -197,11 +214,13 @@
         "bottle": "/assets/products/pueraria-mirifica/bottle-cutout.png"
       },
       "dose": "250 мг в 1 капсуле",
+      "catalog": {"name": "Пуэрария Мирифика", "package": "60 капсул", "capsule": "250 мг", "composition": "Экстракт пуэрарии, изофлавоны 40%"},
       "catalogHighlights": ["60 капсул", "Изофлавоны 40%", "Для женщин 18+"],
       "theme": {"accent": "#bf2966", "soft": "#fff0f7"}
     },
     {
       "slug": "psyllium",
+      "catalogOrder": 10,
       "active": true,
       "name": "Псиллиум FGN",
       "short": "Пищевая добавка на основе шелухи семян индийского подорожника.",
@@ -219,11 +238,13 @@
         "bottle": "/assets/products/psyllium/bottle-cutout.png"
       },
       "dose": "400 мг в 1 капсуле",
+      "catalog": {"name": "Псиллиум", "package": "120 капсул", "capsule": "400 мг", "composition": "Шелуха семян подорожника"},
       "catalogHighlights": ["120 капсул", "Шелуха семян подорожника", "Пищевые волокна"],
       "theme": {"accent": "#bf8a19", "soft": "#fff8e8"}
     },
     {
       "slug": "psyllium-slim",
+      "catalogOrder": 11,
       "active": true,
       "name": "Псиллиум Слим со сливой",
       "short": "Пищевая добавка на основе шелухи семян индийского подорожника и сливы.",
@@ -241,6 +262,7 @@
         "bottle": "/assets/products/psyllium-slim/bottle-cutout.png"
       },
       "dose": "400 мг в 1 капсуле",
+      "catalog": {"name": "Псиллиум Слим", "package": "120 капсул", "capsule": "400 мг", "composition": "Псиллиум + слива"},
       "catalogHighlights": ["120 капсул", "Псиллиум и слива", "Пищевые волокна"],
       "theme": {"accent": "#a84394", "soft": "#fff1fc"}
     }

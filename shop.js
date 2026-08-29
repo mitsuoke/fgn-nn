@@ -2,17 +2,59 @@
   const source = document.body.dataset.productsSrc;
   if (!source) return;
   const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[ch]);
-  const productUrl = (slug) => `/products/${encodeURIComponent(slug)}/`;
-  const renderCatalog = (products) => {
-    const grid = document.querySelector('[data-products-grid]');
-    if (!grid) return;
-    const active = products.filter((product) => product.active !== false);
-    if (!active.length) { grid.innerHTML = '<p class="shop-empty">Сейчас каталог обновляется. Загляните чуть позже.</p>'; return; }
-    grid.innerHTML = active.map((product) => `
-      <article class="shop-card">
-        <a class="shop-card-image" href="${productUrl(product.slug)}" aria-label="Открыть карточку ${escapeHtml(product.name)}"><img src="${escapeHtml(product.images?.catalog || product.images?.gallery?.[0] || '')}" alt="${escapeHtml(product.name)}" loading="lazy" width="600" height="450"></a>
-        <div class="shop-card-body"><span class="shop-kicker">${escapeHtml(product.category || 'Продукция FGN')}</span><h2><a href="${productUrl(product.slug)}">${escapeHtml(product.name)}</a></h2><p>${escapeHtml(product.short || '')}</p><div class="shop-card-meta"><span>${escapeHtml(product.application || '')}</span></div><a class="button button-primary" href="${productUrl(product.slug)}">Подробнее</a></div>
-      </article>`).join('');
+  const siteRoot = new URL(document.body.dataset.siteRoot || './', document.baseURI);
+  const siteUrl = (path = '') => new URL(String(path).replace(/^\//, ''), siteRoot).href;
+  const productUrl = (slug) => siteUrl(`products/${encodeURIComponent(slug)}/`);
+  const activeProducts = (products) => products
+    .filter((product) => product.active !== false)
+    .sort((a, b) => (a.catalogOrder || 999) - (b.catalogOrder || 999));
+
+  const hydrateCollections = (products) => {
+    const productBySlug = new Map(products.map((product) => [product.slug, product]));
+    document.querySelectorAll('[data-product-collection]').forEach((collection) => {
+      const cards = Array.from(collection.querySelectorAll('[data-product-slug]'));
+      cards.forEach((card) => {
+        const product = productBySlug.get(card.dataset.productSlug);
+        if (!product || product.active === false) {
+          card.hidden = true;
+          return;
+        }
+
+        const catalog = product.catalog || {};
+        const name = catalog.name || product.name;
+        const link = productUrl(product.slug);
+        card.hidden = false;
+        if (card.matches('a')) card.href = link;
+        card.querySelectorAll('a').forEach((anchor) => { anchor.href = link; });
+        const image = card.querySelector('img');
+        if (image && product.images?.catalog) {
+          image.src = siteUrl(product.images.catalog);
+          image.alt = `${name} FGN, ${catalog.package || ''}${catalog.capsule ? ` по ${catalog.capsule}` : ''}`.trim();
+        }
+        const heading = card.querySelector('h3');
+        if (heading) {
+          const headingLink = heading.querySelector('a');
+          (headingLink || heading).textContent = name;
+        }
+        const values = card.querySelectorAll('.product-card-specs dd');
+        [catalog.package, catalog.capsule, catalog.composition].forEach((value, index) => {
+          if (values[index] && value) values[index].textContent = value;
+        });
+        const summary = card.matches('a') ? card.querySelector('p') : null;
+        if (summary && catalog.package && catalog.capsule) summary.textContent = `${catalog.package} · ${catalog.capsule}`;
+        const imageLink = card.querySelector('.product-card-image');
+        if (imageLink) imageLink.setAttribute('aria-label', `Состав и применение продукта ${name}`);
+      });
+
+      activeProducts(products).forEach((product) => {
+        const card = cards.find((item) => item.dataset.productSlug === product.slug);
+        if (card) collection.append(card);
+      });
+    });
+
+    document.querySelectorAll('[data-product-count]').forEach((element) => {
+      element.textContent = String(activeProducts(products).length);
+    });
   };
   const hydrateProduct = (products) => {
     const slug = document.body.dataset.productSlug;
@@ -38,6 +80,29 @@
       if (!docs.length) docsBlock.hidden = true;
       else { docsList.innerHTML = docs.map((doc) => `<div class="shop-document"><span>${escapeHtml(doc.type || 'Документ')}</span><strong>${escapeHtml(doc.number || '')}</strong>${doc.date ? `<small>от ${escapeHtml(doc.date)}</small>` : ''}</div>`).join(''); docsBlock.hidden = false; }
     }
+
+    const gallery = document.querySelector('[data-product-gallery]');
+    if (gallery && Array.isArray(product.images?.gallery)) {
+      const buttons = Array.from(gallery.querySelectorAll('[data-product-zoom]'));
+      buttons.forEach((button, index) => {
+        const path = product.images.gallery[index];
+        if (!path) return;
+        const url = siteUrl(path);
+        button.dataset.full = url;
+        const image = button.querySelector('img');
+        if (image) image.src = url;
+      });
+    }
   };
-  fetch(source, { credentials: 'same-origin' }).then((response) => { if (!response.ok) throw new Error(`Products data: ${response.status}`); return response.json(); }).then((data) => { const products = Array.isArray(data.products) ? data.products : []; renderCatalog(products); hydrateProduct(products); }).catch((error) => { console.error('Не удалось загрузить данные каталога.', error); const grid = document.querySelector('[data-products-grid]'); if (grid) grid.innerHTML = '<p class="shop-empty">Каталог временно недоступен. Попробуйте обновить страницу позже.</p>'; });
+  fetch(source, { credentials: 'same-origin' })
+    .then((response) => { if (!response.ok) throw new Error(`Products data: ${response.status}`); return response.json(); })
+    .then((data) => {
+      const products = Array.isArray(data.products) ? data.products : [];
+      hydrateCollections(products);
+      hydrateProduct(products);
+    })
+    .catch((error) => {
+      console.warn('Не удалось загрузить данные каталога. Используется HTML-резерв.', error);
+      document.documentElement.dataset.productsFallback = 'true';
+    });
 })();
