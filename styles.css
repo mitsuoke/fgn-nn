@@ -63,7 +63,7 @@
 .bad-warning strong{flex:0 0 auto;font-size:15px;letter-spacing:.01em}
 .bad-warning span{font-size:12px;color:rgba(255,255,255,.67)}
 .product-card-link{display:block}
-.products .product-card-link img{aspect-ratio:3/4;object-fit:contain;padding:8px;background:#fff}
+.products .product-card-link img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:contain;padding:8px;background:#fff}
 .product-card-link:focus-visible{outline:3px solid #aeb8ff;outline-offset:4px}
 .product-carousel{min-width:0}
 .product-carousel-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px;color:rgba(255,255,255,.62);font-size:12px}
@@ -75,7 +75,7 @@
 .products .product-track{display:flex;grid-template-columns:none;gap:18px;overflow-x:auto;padding:4px 4px 18px;scroll-behavior:smooth;scroll-padding-inline:4px;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#6471cd rgba(255,255,255,.1)}
 .products .product-track:focus-visible{outline:2px solid #aeb8ff;outline-offset:5px}
 .products .product-card-link{flex:0 0 clamp(210px,18vw,230px);scroll-snap-align:start}
-.products-link-row{display:flex;align-items:stretch;gap:16px;margin-top:25px}
+.products-link-row{display:flex;align-items:stretch;justify-content:flex-end;gap:16px;margin-top:25px}
 .products-link-row .bad-warning{flex:1;margin:0}
 .products-catalog-button{flex:0 0 auto;min-width:245px}
 .catalog-end-cta{padding:0 0 90px;background:linear-gradient(180deg,#f0f1f8,#fff)}
