@@ -8,6 +8,12 @@ const fail = (message) => errors.push(message);
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const exists = (file) => fs.existsSync(path.join(root, file));
 const text = (html = '') => html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+const absoluteUrl = (relative) => `https://fgn-nn.ru${relative}`;
+const metaContent = (html, attribute, value) => html.match(new RegExp(`<meta\\s+${attribute}="${value}"\\s+content="([^"]*)"`))?.[1]?.trim() || '';
+const schemaNodes = (html) => [...html.matchAll(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  .map((match) => { try { return JSON.parse(match[1]); } catch { return null; } })
+  .filter(Boolean)
+  .flatMap((schema) => schema['@graph'] || [schema]);
 const htmlFiles = [];
 
 const walk = (directory = '.') => {
@@ -39,10 +45,16 @@ for (const product of products) {
   if (!/^[a-z0-9-]+$/.test(product.slug || '')) fail(`${prefix}: некорректный slug.`);
   if (!product.name || !product.description || !product.warning) fail(`${prefix}: не заполнены обязательные тексты.`);
   if (!product.catalog?.name || !product.catalog?.package || !product.catalog?.capsule || !product.catalog?.composition) fail(`${prefix}: не заполнены данные каталога.`);
+  if (!product.images?.hero || !product.seo?.title || !product.seo?.description || !product.seo?.ogTitle || !product.seo?.ogDescription || !product.seo?.schemaName || !product.seo?.schemaDescription || !product.seo?.breadcrumbName || !product.seo?.schemaImages?.length) fail(`${prefix}: не заполнен SEO-контракт.`);
+  for (const field of ['description', 'schemaDescription']) {
+    if (!product.seo?.[field]?.includes(product.catalog.package) || !product.seo?.[field]?.includes(product.catalog.capsule)) fail(`${prefix}: ${field} не содержит актуальные упаковку и массу капсулы.`);
+  }
+  const socialSummary = [product.seo?.title, product.seo?.ogTitle, product.seo?.ogDescription].join(' ');
+  if (!socialSummary.includes(product.catalog.package) || !socialSummary.includes(product.catalog.capsule)) fail(`${prefix}: title/OpenGraph не содержат актуальные упаковку и массу капсулы.`);
   if (product.slug === 'ezhovik' ? product.category !== 'БАД к пище' : product.category !== 'Пищевая добавка') fail(`${prefix}: неверная категория продукта.`);
   if (product.slug === 'ezhovik' ? !/^БАД\./.test(product.warning) : !/^Пищевая добавка\./.test(product.warning)) fail(`${prefix}: неверное предупреждение.`);
   if (!product.ozon || (product.ozon.active && !/^https:\/\/www\.ozon\.ru\//.test(product.ozon.url || ''))) fail(`${prefix}: некорректная активная ссылка Ozon.`);
-  for (const image of [product.images?.catalog, product.images?.bottle, ...(product.images?.gallery || [])].filter(Boolean)) {
+  for (const image of [product.images?.hero, product.images?.catalog, product.images?.bottle, ...(product.images?.gallery || []), ...(product.seo?.schemaImages || [])].filter(Boolean)) {
     if (!exists(image.replace(/^\//, ''))) fail(`${prefix}: отсутствует ${image}.`);
   }
 
@@ -60,18 +72,42 @@ for (const product of products) {
   if (fallbackName !== product.name) fail(`${page}: резервное название не совпадает с products.json.`);
   if (fallbackDescription !== product.description) fail(`${page}: резервное описание не совпадает с products.json.`);
   if (fallbackWarning !== product.warning) fail(`${page}: резервное предупреждение не совпадает с products.json.`);
+  const expectedCanonical = `https://fgn-nn.ru/products/${product.slug}/`;
+  const title = text(html.match(/<title>([\s\S]*?)<\/title>/)?.[1]);
+  const description = metaContent(html, 'name', 'description');
+  const ogTitle = metaContent(html, 'property', 'og:title');
+  const ogDescription = metaContent(html, 'property', 'og:description');
+  const ogImage = metaContent(html, 'property', 'og:image');
+  const ogUrl = metaContent(html, 'property', 'og:url');
+  const canonical = html.match(/<link\s+rel="canonical"\s+href="([^"]+)"/)?.[1]?.trim() || '';
+  if (title !== product.seo.title) fail(`${page}: title не совпадает с products.json.`);
+  if (description !== product.seo.description) fail(`${page}: meta description не совпадает с products.json.`);
+  if (ogTitle !== product.seo.ogTitle) fail(`${page}: og:title не совпадает с products.json.`);
+  if (ogDescription !== product.seo.ogDescription) fail(`${page}: og:description не совпадает с products.json.`);
+  if (ogImage !== absoluteUrl(product.images.hero)) fail(`${page}: og:image не совпадает с products.json.`);
+  if (canonical !== expectedCanonical || ogUrl !== expectedCanonical) fail(`${page}: canonical или og:url не соответствует slug.`);
   const galleryCount = [...html.matchAll(/data-product-zoom/g)].length;
   if (galleryCount !== (product.images?.gallery || []).length) fail(`${page}: HTML-резерв галереи (${galleryCount}) не совпадает с JSON (${product.images?.gallery?.length || 0}).`);
-  const schemas = [...html.matchAll(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
-    .map((match) => { try { return JSON.parse(match[1]); } catch { return null; } })
-    .filter(Boolean);
+  const schemas = schemaNodes(html);
   const productSchema = schemas.find((schema) => schema['@type'] === 'Product');
+  const breadcrumbSchema = schemas.find((schema) => schema['@type'] === 'BreadcrumbList');
   if (!productSchema) fail(`${page}: отсутствует Product JSON-LD.`);
   else {
     if (String(productSchema.sku) !== String(product.sku)) fail(`${page}: SKU в Product JSON-LD не совпадает с products.json.`);
     if (productSchema.category !== product.category) fail(`${page}: категория в Product JSON-LD не совпадает с products.json.`);
-    if (!String(productSchema.name || '').includes(product.catalog.name)) fail(`${page}: название в Product JSON-LD не связано с products.json.`);
+    if (productSchema.name !== product.seo.schemaName) fail(`${page}: название в Product JSON-LD не совпадает с products.json.`);
+    if (productSchema.description !== product.seo.schemaDescription) fail(`${page}: описание в Product JSON-LD не совпадает с products.json.`);
+    const schemaImages = (Array.isArray(productSchema.image) ? productSchema.image : [productSchema.image]).filter(Boolean);
+    if (JSON.stringify(schemaImages) !== JSON.stringify(product.seo.schemaImages.map(absoluteUrl))) fail(`${page}: изображения в Product JSON-LD не совпадают с products.json.`);
+    if (productSchema.url && productSchema.url !== expectedCanonical) fail(`${page}: URL в Product JSON-LD не соответствует slug.`);
   }
+  const breadcrumbItems = breadcrumbSchema?.itemListElement || [];
+  const expectedBreadcrumbs = [
+    { name: 'Главная', item: 'https://fgn-nn.ru/' },
+    { name: 'Продукция', item: 'https://fgn-nn.ru/products/' },
+    { name: product.seo.breadcrumbName, item: expectedCanonical }
+  ];
+  if (JSON.stringify(breadcrumbItems.map(({ name, item }) => ({ name, item }))) !== JSON.stringify(expectedBreadcrumbs)) fail(`${page}: BreadcrumbList не совпадает с products.json и маршрутом.`);
 }
 
 const activeSlugs = active.sort((a, b) => a.catalogOrder - b.catalogOrder).map((product) => product.slug);

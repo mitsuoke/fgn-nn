@@ -88,7 +88,9 @@ flowchart TD
 - собственный серверный обработчик формы;
 - авторизация пользователей;
 - платёжные функции;
-- npm-зависимости и процесс сборки.
+- процесс сборки production-файлов.
+
+`npm` используется только для Playwright в CI и локальных браузерных smoke-тестах. Сам опубликованный сайт не зависит от npm и остаётся статическим.
 
 На главной встроена официальная публичная CRM-форма Bitrix24. Она загружается с домена Bitrix24 и отправляет обращение напрямую в CRM; секретные вебхуки и API-токены в репозитории не используются.
 
@@ -114,7 +116,9 @@ fgn-nn/
 ├── data/
 │   └── products.json
 ├── scripts/
-│   └── check-repository.mjs
+│   ├── check-repository.mjs
+│   └── browser-smoke.mjs
+├── package.json
 ├── .github/workflows/
 │   └── validate.yml
 ├── robots.txt
@@ -167,7 +171,9 @@ fgn-nn/
 | `product-detail.css` | Единый визуальный шаблон всех страниц товаров |
 | `product-detail.js` | Lightbox, клавиатура и свайп галереи товара |
 | `scripts/check-repository.mjs` | Проверка данных, ссылок, SEO-связности, ресурсов и базовой безопасности |
-| `.github/workflows/validate.yml` | CI-проверка каждого push и pull request |
+| `scripts/browser-smoke.mjs` | Playwright smoke-тест маршрутов, UI, изображений и мобильной адаптации |
+| `package.json` | Закреплённая версия Playwright и команды проверок; в production не загружается |
+| `.github/workflows/validate.yml` | Обязательный CI-гейт pull request в `main` |
 | `robots.txt` | Правила обхода и адрес карты сайта |
 | `sitemap.xml` | Индексируемые коммерческие страницы |
 | `.nojekyll` | Запрещает GitHub Pages обрабатывать проект через Jekyll |
@@ -686,25 +692,38 @@ done
 - юридические страницы не подменяют коммерческие заголовки;
 - дата `lastmod` меняется только при содержательном обновлении страницы.
 
+SEO-контракт каждого товара хранится в `data/products.json` в объекте `seo`. Репозиторный валидатор точно сравнивает его с `title`, meta description, Open Graph, Product JSON-LD и BreadcrumbList, а также проверяет, что описания содержат актуальные количество капсул и массу капсулы.
+
+### Автоматический браузерный smoke-тест
+
+```bash
+npm install --no-audit --no-fund
+npx playwright install chromium
+npm run test:smoke
+```
+
+Smoke-тест открывает главную, каталог и все 11 карточек, проверяет HTTP-ответы, ошибки JavaScript, изображения, доступные имена элементов управления, Ozon-ссылки, меню, карусель, lightbox и отсутствие горизонтального переполнения на ширинах 320, 360, 375, 390 и 430 px. Отправка CRM-формы и внешние сервисы намеренно не выполняются автоматически.
+
 Для финальной оценки рекомендуется Lighthouse в Chrome DevTools: Performance, Accessibility, Best Practices и SEO. Мобильный прогон обязателен.
 
 ## 18. Публикация
 
-GitHub Pages публикует корень ветки `main`.
+GitHub Pages публикует корень защищённой ветки `main`. Рабочий код сначала попадает в отдельную ветку и pull request. Слияние разрешено только после успешного обязательного статуса `repository-check`; CI завершается до изменения `main`, поэтому непроверенный коммит не запускает production-публикацию.
 
 Рекомендуемый порядок через Git:
 
 ```bash
 git pull --ff-only origin main
+git switch -c feature/short-description
 git status
 git diff --check
 git diff
-git add README.md
-git commit -m "Document FGN website architecture"
-git push origin main
+git add <точные-файлы>
+git commit -m "Describe the change"
+git push -u origin feature/short-description
 ```
 
-Для функциональных изменений в `git add` следует перечислять точные файлы, а не использовать `git add .` без проверки.
+После push открыть pull request в `main`, дождаться зелёного `repository-check` и только затем выполнить merge. Для функциональных изменений в `git add` следует перечислять точные файлы, а не использовать `git add .` без проверки.
 
 После отправки:
 
@@ -733,10 +752,11 @@ HTML подключает ресурсы с query-параметром, напр
 
 ```bash
 node scripts/check-repository.mjs
+node scripts/browser-smoke.mjs
 git diff --check
 ```
 
-Та же проверка автоматически запускается GitHub Actions. Публикация при красной проверке запрещена.
+Обе проверки автоматически запускаются GitHub Actions в одном обязательном статусе `repository-check`. Защита `main` запрещает merge при красной или незавершённой проверке и запрещает прямые изменения production-ветки.
 
 ### Откат
 
@@ -831,9 +851,7 @@ novaya-usluga/
 ### Средний приоритет
 
 - добавить ширину и высоту изображениям для уменьшения сдвигов макета;
-- автоматизировать проверку локальных ссылок;
 - добавить автоматическую HTML-валидацию;
-- настроить защиту ветки `main`;
 - включить двухфакторную аутентификацию владельца репозитория;
 - проводить периодическую проверку внешних ссылок и данных сертификатов.
 
