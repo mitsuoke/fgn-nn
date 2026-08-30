@@ -88,8 +88,8 @@ try {
 
     if (route.startsWith('/products/') && route !== '/products/') {
       const product = products.find((item) => route.includes(`/${item.slug}/`));
-      const ozonHref = await page.locator('[data-ozon-link]').getAttribute('href');
-      if (ozonHref !== product.ozon.url) fail(`${route}: ссылка Ozon не совпадает с products.json.`);
+      const ozonHrefs = await page.locator('[data-ozon-link]').evaluateAll((links) => links.map((link) => link.href));
+      if (!ozonHrefs.length || ozonHrefs.some((href) => href !== product.ozon.url)) fail(`${route}: не все ссылки Ozon совпадают с products.json.`);
     }
     await page.close();
   }
