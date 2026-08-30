@@ -1,0 +1,11 @@
+{
+  "name": "fgn-nn-site",
+  "private": true,
+  "scripts": {
+    "check": "node scripts/check-repository.mjs",
+    "test:smoke": "node scripts/browser-smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
