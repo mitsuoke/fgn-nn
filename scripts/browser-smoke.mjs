@@ -70,7 +70,7 @@ try {
   for (const route of routes) {
     const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
     const runtimeErrors = [];
-    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    page.on('pageerror', (error) => runtimeErrors.push(error.stack || error.message));
     page.on('console', (message) => {
       if (message.type() === 'error' && !message.text().includes('ERR_BLOCKED_BY_CLIENT')) runtimeErrors.push(message.text());
     });
@@ -114,7 +114,13 @@ try {
       try {
         await renderedForm.waitFor({ state: 'visible', timeout: 20000 });
       } catch {
-        fail(`${route}: фактический интерфейс CRM-формы Bitrix24 не появился.`);
+        const diagnostic = await page.evaluate(() => ({
+          b24Nodes: [...document.querySelectorAll('[class*="b24"]')].map((element) => ({ tag: element.tagName, className: element.className, text: element.textContent?.trim().slice(0, 120) })),
+          iframes: [...document.querySelectorAll('iframe')].map((frame) => frame.src),
+          panelHtml: document.querySelector('[data-commercial-crm]')?.innerHTML.slice(0, 1200),
+          portalScripts: [...document.scripts].map((script) => script.src).filter((src) => src.includes('bitrix24.ru'))
+        }));
+        fail(`${route}: фактический интерфейс CRM-формы Bitrix24 не появился. Диагностика: ${JSON.stringify(diagnostic)}.`);
       }
       if (!liveBitrix && await page.locator('iframe[data-test-bitrix-frame]').count() !== 1) fail(`${route}: frame-src CSP не позволил загрузить фрейм CRM-формы.`);
       if (liveBitrix && await renderedForm.count()) {
