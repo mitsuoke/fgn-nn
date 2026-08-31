@@ -246,6 +246,10 @@ if (shortFormFrames.size !== 1) {
 const isolatedFormHtml = read('forms/bitrix.html');
 const isolatedFormScript = read('forms/bitrix-embed.js');
 
+if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=2"')) {
+  fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
+}
+
 if (!isolatedFormHtml.includes(
   '<meta name="robots" content="noindex,nofollow">'
 )) {
@@ -276,6 +280,9 @@ if (/frame-ancestors/.test(isolatedCsp)) {
 }
 
 for (const required of [
+  "'8'",
+  "sec: 'kodg8f'",
+  'loader_8.js',
   "'10'",
   "sec: '20s329'",
   'loader_10.js',
@@ -299,8 +306,58 @@ for (const file of htmlFiles) {
   }
 }
 
-if (!read('index.html').includes('data-b24-form="inline/8/kodg8f"')) {
-  fail('index.html: существующая CRM-форма №8 на главной изменена или отсутствует.');
+const commonScript = read('script.js');
+
+for (const required of [
+  'fgn-bitrix-height',
+  'event.origin !== window.location.origin',
+  'event.source !== frame.contentWindow'
+]) {
+  if (!commonScript.includes(required)) {
+    fail(`script.js: отсутствует безопасный CRM resize-bridge: ${required}.`);
+  }
+}
+
+if (read('commercial-pages.js').includes('fgn-bitrix-height')) {
+  fail('commercial-pages.js: CRM resize-bridge должен находиться только в общем script.js.');
+}
+
+const homeIsolatedHtml = read('index.html');
+
+if (
+  !homeIsolatedHtml.includes('data-bitrix-form-frame="8"') ||
+  !homeIsolatedHtml.includes('src="forms/bitrix.html?form=8"')
+) {
+  fail('index.html: изолированная CRM-форма №8 отсутствует или подключена неверно.');
+}
+
+if (/<script\s+data-b24-form=/.test(homeIsolatedHtml)) {
+  fail('index.html: на главной осталась прямая вставка Bitrix.');
+}
+
+const homeCsp = metaContent(
+  homeIsolatedHtml,
+  'http-equiv',
+  'Content-Security-Policy'
+);
+
+if (!homeCsp) {
+  fail('index.html: отсутствует Content Security Policy.');
+}
+
+const homeFrameSrc =
+  homeCsp.match(/frame-src\s+([^;]+)/)?.[1] || '';
+
+if (!homeFrameSrc.split(/\s+/).includes("'self'")) {
+  fail('index.html: frame-src не разрешает локальную изолированную CRM-форму.');
+}
+
+if (/bitrix24\.ru/.test(homeCsp)) {
+  fail('index.html: Bitrix-домены не должны быть разрешены в CSP главной страницы.');
+}
+
+if (/script-src[^;]*(?:'unsafe-inline'|'unsafe-eval'|\*)/.test(homeCsp)) {
+  fail('index.html: script-src главной страницы содержит широкое разрешение.');
 }
 
 const versions = new Set();
@@ -324,7 +381,7 @@ for (const file of htmlFiles) {
     if (!exists(candidate)) fail(`${file}: локальная ссылка не найдена: ${target}.`);
   }
 }
-if (versions.size !== 1 || !versions.has('18')) fail(`Версия styles.css должна быть единой: v=18; найдено ${[...versions].join(', ')}.`);
+if (versions.size !== 1 || !versions.has('19')) fail(`Версия styles.css должна быть единой: v=19; найдено ${[...versions].join(', ')}.`);
 
 const sitemap = read('sitemap.xml');
 for (const product of active) {
@@ -336,6 +393,68 @@ if (!sitemap.includes(`<loc>https://fgn-nn.ru/products/</loc><lastmod>${productD
 for (const file of ['script.js', 'shop.js', 'product-detail.js', 'commercial-pages.js']) {
   try { execFileSync(process.execPath, ['--check', path.join(root, file)], { stdio: 'pipe' }); }
   catch { fail(`${file}: синтаксическая ошибка JavaScript.`); }
+}
+
+for (const file of [
+  'scripts/production-bitrix-smoke.mjs',
+  '.github/workflows/bitrix-production-smoke.yml'
+]) {
+  if (!exists(file)) {
+    fail(`${file}: отсутствует обязательная production-проверка.`);
+  }
+}
+
+const packageJson = JSON.parse(read('package.json'));
+
+if (
+  packageJson.scripts?.['test:production-bitrix'] !==
+  'node scripts/production-bitrix-smoke.mjs'
+) {
+  fail('package.json: неверная команда test:production-bitrix.');
+}
+
+const productionWorkflow = read(
+  '.github/workflows/bitrix-production-smoke.yml'
+);
+
+for (const required of [
+  'workflow_dispatch:',
+  'schedule:',
+  'npm run test:production-bitrix'
+]) {
+  if (!productionWorkflow.includes(required)) {
+    fail(
+      `.github/workflows/bitrix-production-smoke.yml: ` +
+      `отсутствует ${required}`
+    );
+  }
+}
+
+for (const doc of [
+  'README.md',
+  'DEVELOPER_GUIDE.md'
+]) {
+  const content = read(doc);
+
+  for (const required of [
+    'forms/bitrix.html',
+    'forms/bitrix-embed.js',
+    'production-bitrix-smoke.mjs',
+    'bitrix-production-smoke.yml'
+  ]) {
+    if (!content.includes(required)) {
+      fail(`${doc}: документация не описывает ${required}.`);
+    }
+  }
+
+  for (const stale of [
+    'точные CSP-хэши embed-кодов форм №10 и №16',
+    'CSP коммерческих страниц разрешает только `cdn-ru.bitrix24.ru`'
+  ]) {
+    if (content.includes(stale)) {
+      fail(`${doc}: осталось устаревшее описание Bitrix: ${stale}.`);
+    }
+  }
 }
 
 const secretFiles = [...htmlFiles, 'script.js', 'shop.js', 'product-detail.js', 'commercial-pages.js', 'data/products.json'];

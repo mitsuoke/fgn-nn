@@ -1,4 +1,10 @@
 const forms = {
+  '8': {
+    sec: 'kodg8f',
+    loader:
+      'https://' +
+      'cdn-ru.bitrix24.ru/b28134326/crm/form/loader_8.js'
+  },
   '10': {
     sec: '20s329',
     loader:
@@ -37,10 +43,13 @@ if (!config) {
   let lastHeight = 0;
 
   const reportHeight = () => {
+    const wrapper = document.querySelector('.b24-form-wrapper');
+
     const height = Math.ceil(
       Math.max(
-        document.documentElement.scrollHeight,
-        document.body.scrollHeight
+        document.body.scrollHeight,
+        document.body.getBoundingClientRect().height,
+        wrapper?.getBoundingClientRect().bottom || 0
       )
     );
 
@@ -59,7 +68,7 @@ if (!config) {
   };
 
   new ResizeObserver(reportHeight)
-    .observe(document.documentElement);
+    .observe(document.body);
 
   new MutationObserver(reportHeight)
     .observe(document.body, {

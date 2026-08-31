@@ -138,5 +138,12 @@
 }
 
 .bitrix-form-wrap > * {
+  width: 100%;
   max-width: 100%;
+}
+
+.bitrix-form-wrap iframe {
+  display: block;
+  height: 760px;
+  border: 0;
 }

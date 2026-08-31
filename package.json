@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "check": "node scripts/check-repository.mjs",
-    "test:smoke": "node scripts/browser-smoke.mjs"
+    "test:smoke": "node scripts/browser-smoke.mjs",
+    "test:production-bitrix": "node scripts/production-bitrix-smoke.mjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
