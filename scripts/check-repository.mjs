@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -138,6 +139,41 @@ const catalogSchemas = [...catalogHtml.matchAll(/<script\s+type="application\/ld
 const itemList = catalogSchemas.flatMap((schema) => schema['@graph'] || [schema]).find((schema) => schema['@type'] === 'ItemList');
 const schemaSlugs = (itemList?.itemListElement || []).map((item) => item.url?.match(/\/products\/([^/]+)\/$/)?.[1]);
 if (itemList?.numberOfItems !== active.length || JSON.stringify(schemaSlugs) !== JSON.stringify(activeSlugs)) fail('products/index.html: ItemList JSON-LD не совпадает с products.json.');
+
+const commercialForms = [
+  { file: 'kapsulirovanie/index.html', form: 'inline/10/20s329', id: '10', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_10.js' },
+  { file: 'fasovka-sypuchih-produktov/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' },
+  { file: 'fasovka-chaya-i-sborov/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' },
+  { file: 'upakovka-i-markirovka-bad/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' },
+  { file: 'kontraktnoe-proizvodstvo-bad/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' }
+];
+const shortFormScripts = new Set();
+for (const config of commercialForms) {
+  const html = read(config.file);
+  const scripts = [...html.matchAll(/<script\s+data-b24-form="([^"]+)"\s+data-skip-moving="true">([\s\S]*?)<\/script>/g)];
+  if (scripts.length !== 1) {
+    fail(`${config.file}: ожидается одна CRM-форма Bitrix24, найдено ${scripts.length}.`);
+    continue;
+  }
+  const [, form, script] = scripts[0];
+  if (form !== config.form) fail(`${config.file}: подключена неверная CRM-форма ${form}.`);
+  if (!script.includes(`'${config.loader}'`)) fail(`${config.file}: используется неверный загрузчик CRM-формы.`);
+  if (!html.includes(`data-commercial-crm="${config.id}"`)) fail(`${config.file}: контейнер CRM-формы не соответствует форме №${config.id}.`);
+  if (!html.includes('commercial-pages.css?v=3')) fail(`${config.file}: подключена неактуальная версия commercial-pages.css.`);
+  if (!html.includes('<a href="https://fgn-nn.ru/consent.html">Согласие на обработку персональных данных</a>')) fail(`${config.file}: рядом с CRM-формой отсутствует ссылка на согласие.`);
+  if (!html.includes('class="commercial-mobile-quick" aria-label="Быстрые действия"><a href="#contact">Получить расчёт</a>')) fail(`${config.file}: мобильный CTA не ведёт к форме на странице.`);
+  const contactBlock = html.match(/<section class="section section-tint" id="contact">([\s\S]*?)<\/section>/)?.[1] || '';
+  if (/mailto:|contact-email/.test(contactBlock)) fail(`${config.file}: в основном блоке расчёта осталась ссылка e-mail.`);
+  const hash = `sha256-${crypto.createHash('sha256').update(script).digest('base64')}`;
+  const csp = metaContent(html, 'http-equiv', 'Content-Security-Policy');
+  for (const source of [`'${hash}'`, 'https://cdn-ru.bitrix24.ru', 'https://b24-ud1314.bitrix24.ru']) {
+    if (!csp.includes(source)) fail(`${config.file}: CSP не разрешает ${source}.`);
+  }
+  if (/script-src[^;]*(?:'unsafe-inline'|'unsafe-eval'|\*)/.test(csp)) fail(`${config.file}: script-src содержит широкое разрешение.`);
+  if (config.id === '16') shortFormScripts.add(scripts[0][0]);
+}
+if (shortFormScripts.size !== 1) fail('Короткая CRM-форма №16 должна быть одинаковой на четырёх коммерческих страницах.');
+if (!read('index.html').includes('data-b24-form="inline/8/kodg8f"')) fail('index.html: существующая CRM-форма №8 на главной изменена или отсутствует.');
 
 const versions = new Set();
 for (const file of htmlFiles) {
