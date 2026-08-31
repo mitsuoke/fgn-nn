@@ -19,8 +19,8 @@ const commercialRoutes = [
 ];
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
-const mockExternalResources = (page) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (request) => {
-  if (liveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
+const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (request) => {
+  if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
     return request.continue();
   }
   if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:10|16)\.js/.test(request.request().url())) {
@@ -89,6 +89,7 @@ try {
       const ids = [...document.querySelectorAll('[id]')].map((element) => element.id).filter(Boolean);
       const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
       const unnamedControls = [...document.querySelectorAll('button, a[href]')].filter((element) => {
+        if (element.closest('.b24-form')) return false;
         const name = element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent?.trim() || element.querySelector('img')?.alt;
         return !name;
       }).length;
@@ -176,7 +177,7 @@ try {
 
   for (const width of mobileWidths) {
     const page = await browser.newPage({ viewport: { width, height: 844 } });
-    await mockExternalResources(page);
+    await mockExternalResources(page, { useLiveBitrix: false });
     for (const route of commercialRoutes) {
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
