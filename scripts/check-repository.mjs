@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -141,47 +140,168 @@ const schemaSlugs = (itemList?.itemListElement || []).map((item) => item.url?.ma
 if (itemList?.numberOfItems !== active.length || JSON.stringify(schemaSlugs) !== JSON.stringify(activeSlugs)) fail('products/index.html: ItemList JSON-LD не совпадает с products.json.');
 
 const commercialForms = [
-  { file: 'kapsulirovanie/index.html', form: 'inline/10/20s329', id: '10', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_10.js' },
-  { file: 'fasovka-sypuchih-produktov/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' },
-  { file: 'fasovka-chaya-i-sborov/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' },
-  { file: 'upakovka-i-markirovka-bad/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' },
-  { file: 'kontraktnoe-proizvodstvo-bad/index.html', form: 'inline/16/5s6fmf', id: '16', loader: 'https://cdn-ru.bitrix24.ru/b28134326/crm/form/loader_16.js' }
+  { file: 'kapsulirovanie/index.html', id: '10' },
+  { file: 'fasovka-sypuchih-produktov/index.html', id: '16' },
+  { file: 'fasovka-chaya-i-sborov/index.html', id: '16' },
+  { file: 'upakovka-i-markirovka-bad/index.html', id: '16' },
+  { file: 'kontraktnoe-proizvodstvo-bad/index.html', id: '16' }
 ];
-const shortFormScripts = new Set();
+
+const shortFormFrames = new Set();
+
 for (const config of commercialForms) {
   const html = read(config.file);
-  const scripts = [...html.matchAll(/<script\s+data-b24-form="([^"]+)"\s+data-skip-moving="true">([\s\S]*?)<\/script>/g)];
-  if (scripts.length !== 1) {
-    fail(`${config.file}: ожидается одна CRM-форма Bitrix24, найдено ${scripts.length}.`);
+
+  const frames = [
+    ...html.matchAll(
+      new RegExp(
+        `<iframe\\b[^>]*data-bitrix-form-frame="${config.id}"[^>]*>`,
+        'g'
+      )
+    )
+  ].map((match) => match[0]);
+
+  if (frames.length !== 1) {
+    fail(
+      `${config.file}: ожидается один iframe CRM-формы №${config.id}, найдено ${frames.length}.`
+    );
     continue;
   }
-  const [, form, script] = scripts[0];
-  if (form !== config.form) fail(`${config.file}: подключена неверная CRM-форма ${form}.`);
-  if (!script.includes(`'${config.loader}'`)) fail(`${config.file}: используется неверный загрузчик CRM-формы.`);
-  if (!html.includes(`data-commercial-crm="${config.id}"`)) fail(`${config.file}: контейнер CRM-формы не соответствует форме №${config.id}.`);
-  if (!html.includes('commercial-pages.css?v=3')) fail(`${config.file}: подключена неактуальная версия commercial-pages.css.`);
-  if (!html.includes('<a href="https://fgn-nn.ru/consent.html">Согласие на обработку персональных данных</a>')) fail(`${config.file}: рядом с CRM-формой отсутствует ссылка на согласие.`);
-  if (!html.includes('class="commercial-mobile-quick" aria-label="Быстрые действия"><a href="#contact">Получить расчёт</a>')) fail(`${config.file}: мобильный CTA не ведёт к форме на странице.`);
-  const contactBlock = html.match(/<section class="section section-tint" id="contact">([\s\S]*?)<\/section>/)?.[1] || '';
-  if (/mailto:|contact-email/.test(contactBlock)) fail(`${config.file}: в основном блоке расчёта осталась ссылка e-mail.`);
-  const hash = `sha256-${crypto.createHash('sha256').update(script).digest('base64')}`;
-  const csp = metaContent(html, 'http-equiv', 'Content-Security-Policy');
-  for (const source of [`'${hash}'`, 'https://cdn-ru.bitrix24.ru', 'https://b24-ud1314.bitrix24.ru']) {
-    if (!csp.includes(source)) fail(`${config.file}: CSP не разрешает ${source}.`);
+
+  const frame = frames[0];
+
+  if (!frame.includes(`src="../forms/bitrix.html?form=${config.id}"`)) {
+    fail(`${config.file}: iframe ведёт на неверную CRM-форму.`);
   }
-  for (const directive of ['frame-src', 'child-src']) {
-    const value = csp.match(new RegExp(`${directive}\\s+([^;]+)`))?.[1] || '';
-    if (!value.split(/\s+/).includes('https://b24-ud1314.bitrix24.ru')) fail(`${config.file}: ${directive} не разрешает фрейм CRM-формы Bitrix24.`);
+
+  if (!frame.includes('loading="eager"')) {
+    fail(`${config.file}: CRM iframe должен загружаться eagerly.`);
   }
-  for (const directive of ['script-src', 'style-src']) {
-    const value = csp.match(new RegExp(`${directive}\\s+([^;]+)`))?.[1] || '';
-    if (!value.split(/\s+/).includes('https://b24-ud1314.bitrix24.ru')) fail(`${config.file}: ${directive} не разрешает ресурсы CRM-формы Bitrix24.`);
+
+  if (/<script\s+data-b24-form=/.test(html)) {
+    fail(`${config.file}: осталась прямая вставка Bitrix на коммерческой странице.`);
   }
-  if (/script-src[^;]*(?:'unsafe-inline'|'unsafe-eval'|\*)/.test(csp)) fail(`${config.file}: script-src содержит широкое разрешение.`);
-  if (config.id === '16') shortFormScripts.add(scripts[0][0]);
+
+  if (!html.includes(`data-commercial-crm="${config.id}"`)) {
+    fail(`${config.file}: контейнер CRM-формы не соответствует форме №${config.id}.`);
+  }
+
+  if (!html.includes('commercial-pages.css?v=4')) {
+    fail(`${config.file}: подключена неактуальная версия commercial-pages.css.`);
+  }
+
+  if (!html.includes('commercial-pages.js?v=2')) {
+    fail(`${config.file}: подключена неактуальная версия commercial-pages.js.`);
+  }
+
+  if (!html.includes(
+    '<a href="https://fgn-nn.ru/consent.html">Согласие на обработку персональных данных</a>'
+  )) {
+    fail(`${config.file}: рядом с CRM-формой отсутствует ссылка на согласие.`);
+  }
+
+  if (!html.includes(
+    'class="commercial-mobile-quick" aria-label="Быстрые действия"><a href="#contact">Получить расчёт</a>'
+  )) {
+    fail(`${config.file}: мобильный CTA не ведёт к форме на странице.`);
+  }
+
+  const contactBlock =
+    html.match(
+      /<section class="section section-tint" id="contact">([\s\S]*?)<\/section>/
+    )?.[1] || '';
+
+  if (/mailto:|contact-email/.test(contactBlock)) {
+    fail(`${config.file}: в основном блоке расчёта осталась ссылка e-mail.`);
+  }
+
+  const csp = metaContent(
+    html,
+    'http-equiv',
+    'Content-Security-Policy'
+  );
+
+  const frameSrc =
+    csp.match(/frame-src\s+([^;]+)/)?.[1] || '';
+
+  if (!frameSrc.split(/\s+/).includes("'self'")) {
+    fail(`${config.file}: frame-src не разрешает локальную изолированную CRM-форму.`);
+  }
+
+  if (/bitrix24\.ru/.test(csp)) {
+    fail(`${config.file}: Bitrix-домены не должны быть разрешены в CSP основной страницы.`);
+  }
+
+  if (/script-src[^;]*(?:'unsafe-inline'|'unsafe-eval'|\*)/.test(csp)) {
+    fail(`${config.file}: script-src основной страницы содержит широкое разрешение.`);
+  }
+
+  if (config.id === '16') shortFormFrames.add(frame);
 }
-if (shortFormScripts.size !== 1) fail('Короткая CRM-форма №16 должна быть одинаковой на четырёх коммерческих страницах.');
-if (!read('index.html').includes('data-b24-form="inline/8/kodg8f"')) fail('index.html: существующая CRM-форма №8 на главной изменена или отсутствует.');
+
+if (shortFormFrames.size !== 1) {
+  fail('Iframe CRM-формы №16 должен быть одинаковым на четырёх коммерческих страницах.');
+}
+
+const isolatedFormHtml = read('forms/bitrix.html');
+const isolatedFormScript = read('forms/bitrix-embed.js');
+
+if (!isolatedFormHtml.includes(
+  '<meta name="robots" content="noindex,nofollow">'
+)) {
+  fail('forms/bitrix.html: служебная страница должна быть noindex,nofollow.');
+}
+
+const isolatedCsp = metaContent(
+  isolatedFormHtml,
+  'http-equiv',
+  'Content-Security-Policy'
+);
+
+const isolatedScriptSrc =
+  isolatedCsp.match(/script-src\s+([^;]+)/)?.[1] || '';
+
+for (const source of [
+  "'unsafe-eval'",
+  'https://cdn-ru.bitrix24.ru',
+  'https://b24-ud1314.bitrix24.ru'
+]) {
+  if (!isolatedScriptSrc.split(/\s+/).includes(source)) {
+    fail(`forms/bitrix.html: script-src не содержит ${source}.`);
+  }
+}
+
+if (/frame-ancestors/.test(isolatedCsp)) {
+  fail('forms/bitrix.html: frame-ancestors нельзя задавать через meta CSP.');
+}
+
+for (const required of [
+  "'10'",
+  "sec: '20s329'",
+  'loader_10.js',
+  "'16'",
+  "sec: '5s6fmf'",
+  'loader_16.js',
+  'fgn-bitrix-height',
+  'parent.postMessage'
+]) {
+  if (!isolatedFormScript.includes(required)) {
+    fail(`forms/bitrix-embed.js: отсутствует обязательный фрагмент ${required}.`);
+  }
+}
+
+for (const file of htmlFiles) {
+  if (
+    file !== 'forms/bitrix.html' &&
+    read(file).includes("'unsafe-eval'")
+  ) {
+    fail(`${file}: unsafe-eval разрешён вне изолированной CRM-страницы.`);
+  }
+}
+
+if (!read('index.html').includes('data-b24-form="inline/8/kodg8f"')) {
+  fail('index.html: существующая CRM-форма №8 на главной изменена или отсутствует.');
+}
 
 const versions = new Set();
 for (const file of htmlFiles) {
