@@ -8,6 +8,7 @@ const host = '127.0.0.1';
 const port = 4173;
 const liveBitrix = process.env.BITRIX_LIVE === '1';
 const baseUrl = `${liveBitrix ? 'https' : 'http'}://fgn-nn.ru:${port}`;
+const productionUrl = 'https://fgn-nn.ru';
 const healthUrl = `http://${host}:${port}`;
 const errors = [];
 const fail = (message) => errors.push(message);
@@ -21,7 +22,7 @@ const commercialRoutes = [
 ];
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
-const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru:4173)/, (request) => {
+const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/, (request) => {
   if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
     return request.continue();
   }
@@ -71,6 +72,22 @@ const contentTypes = {
   '.txt': 'text/plain; charset=utf-8',
   '.webp': 'image/webp',
   '.xml': 'application/xml; charset=utf-8'
+};
+
+const readLocalResponse = (url) => {
+  const pathname = decodeURIComponent(new URL(url).pathname);
+  const relative = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
+  const filePath = path.resolve(root, `.${relative}`);
+  if (filePath !== root && !filePath.startsWith(`${root}${path.sep}`)) return { status: 403, body: 'Forbidden' };
+  try {
+    return {
+      status: 200,
+      contentType: contentTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
+      body: fs.readFileSync(filePath)
+    };
+  } catch (error) {
+    return { status: error.code === 'ENOENT' ? 404 : 500, body: error.code === 'ENOENT' ? 'Not found' : 'Server error' };
+  }
 };
 
 const createHttpsServer = () => {
@@ -123,8 +140,12 @@ try {
     page.on('console', (message) => {
       if (message.type() === 'error' && !message.text().includes('ERR_BLOCKED_BY_CLIENT')) runtimeErrors.push(message.text());
     });
+    if (liveBitrix && commercialRoutes.includes(route)) {
+      await page.route(/^https:\/\/fgn-nn\.ru\//, (request) => request.fulfill(readLocalResponse(request.request().url())));
+    }
     await mockExternalResources(page);
-    const response = await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+    const routeBaseUrl = liveBitrix && commercialRoutes.includes(route) ? productionUrl : baseUrl;
+    const response = await page.goto(`${routeBaseUrl}${route}`, { waitUntil: 'networkidle' });
     if (!response?.ok()) fail(`${route}: HTTP ${response?.status() || 'без ответа'}.`);
     await page.evaluate(async () => {
       document.querySelectorAll('img').forEach((image) => { image.loading = 'eager'; });
