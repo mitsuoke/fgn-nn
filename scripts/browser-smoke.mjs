@@ -5,7 +5,8 @@ import { spawn } from 'node:child_process';
 const root = path.resolve(import.meta.dirname, '..');
 const host = '127.0.0.1';
 const port = 4173;
-const baseUrl = `http://${host}:${port}`;
+const baseUrl = `http://fgn-nn.ru:${port}`;
+const healthUrl = `http://${host}:${port}`;
 const liveBitrix = process.env.BITRIX_LIVE === '1';
 const errors = [];
 const fail = (message) => errors.push(message);
@@ -19,7 +20,7 @@ const commercialRoutes = [
 ];
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
-const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (request) => {
+const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru:4173)/, (request) => {
   if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
     return request.continue();
   }
@@ -48,7 +49,7 @@ const loadPlaywright = async () => {
 const waitForServer = async () => {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
-      const response = await fetch(baseUrl);
+      const response = await fetch(healthUrl);
       if (response.ok) return;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -65,7 +66,10 @@ let browser;
 try {
   await waitForServer();
   const { chromium } = await loadPlaywright();
-  browser = await chromium.launch({ headless: process.env.BITRIX_HEADLESS !== '0' });
+  browser = await chromium.launch({
+    headless: process.env.BITRIX_HEADLESS !== '0',
+    args: ['--host-resolver-rules=MAP fgn-nn.ru 127.0.0.1']
+  });
 
   for (const route of routes) {
     const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
