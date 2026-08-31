@@ -26,7 +26,7 @@ const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => pag
   if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
     return request.continue();
   }
-  if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:10|16)\.js/.test(request.request().url())) {
+  if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(request.request().url())) {
     return request.fulfill({
       status: 200,
       contentType: 'application/javascript',
@@ -177,6 +177,56 @@ try {
     if (audit.unnamedControls) fail(`${route}: элементы управления без доступного имени — ${audit.unnamedControls}.`);
     if (audit.brokenImages.length) fail(`${route}: не загрузились изображения: ${audit.brokenImages.join(', ')}.`);
     if (audit.horizontalOverflow > 1) fail(`${route}: горизонтальное переполнение ${audit.horizontalOverflow}px.`);
+    if (route === '/') {
+      const hostFrame = page.locator(
+        'iframe[data-bitrix-form-frame="8"]'
+      ).first();
+
+      try {
+        await hostFrame.waitFor({
+          state: 'visible',
+          timeout: 20000
+        });
+      } catch {
+        fail('/: изолированный iframe CRM-формы №8 не появился.');
+      }
+
+      const isolatedFrame = page.frames().find((frame) =>
+        frame.url().includes('/forms/bitrix.html?form=8')
+      );
+
+      if (!isolatedFrame) {
+        fail('/: страница изолированной CRM-формы №8 не загрузилась.');
+      } else {
+        const renderedForm = isolatedFrame
+          .locator('.b24-form-wrapper, .b24-form')
+          .first();
+
+        try {
+          await renderedForm.waitFor({
+            state: 'visible',
+            timeout: 20000
+          });
+        } catch {
+          fail('/: фактический интерфейс CRM-формы №8 не появился.');
+        }
+      }
+
+      if (await hostFrame.count()) {
+        const size = await hostFrame.evaluate((element) => ({
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height
+        }));
+
+        if (size.width < 240 || size.height < 100) {
+          fail(
+            `/: iframe CRM-формы №8 имеет некорректный размер ` +
+            `${Math.round(size.width)}×${Math.round(size.height)}.`
+          );
+        }
+      }
+    }
+
     if (commercialRoutes.includes(route)) {
       const expectedId = route === '/kapsulirovanie/' ? '10' : '16';
       const formId = await page.locator('[data-commercial-crm]').getAttribute('data-commercial-crm');
