@@ -1,13 +1,14 @@
 import fs from 'node:fs';
+import https from 'node:https';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
 const host = '127.0.0.1';
 const port = 4173;
-const baseUrl = `http://fgn-nn.ru:${port}`;
-const healthUrl = `http://${host}:${port}`;
 const liveBitrix = process.env.BITRIX_LIVE === '1';
+const baseUrl = `${liveBitrix ? 'https' : 'http'}://fgn-nn.ru:${port}`;
+const healthUrl = `http://${host}:${port}`;
 const errors = [];
 const fail = (message) => errors.push(message);
 const products = JSON.parse(fs.readFileSync(path.join(root, 'data/products.json'), 'utf8')).products.filter((product) => product.active !== false);
@@ -57,18 +58,62 @@ const waitForServer = async () => {
   throw new Error('Локальный HTTP-сервер не запустился.');
 };
 
-const server = spawn('python3', ['-m', 'http.server', String(port), '--bind', host], {
-  cwd: root,
-  stdio: 'ignore'
-});
+const contentTypes = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.txt': 'text/plain; charset=utf-8',
+  '.webp': 'image/webp',
+  '.xml': 'application/xml; charset=utf-8'
+};
+
+const createHttpsServer = () => {
+  const keyPath = process.env.BITRIX_TLS_KEY;
+  const certPath = process.env.BITRIX_TLS_CERT;
+  if (!keyPath || !certPath) throw new Error('Для live-проверки Bitrix нужны BITRIX_TLS_KEY и BITRIX_TLS_CERT.');
+  return https.createServer({ key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) }, (request, response) => {
+    const pathname = decodeURIComponent(new URL(request.url, baseUrl).pathname);
+    const relative = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
+    const filePath = path.resolve(root, `.${relative}`);
+    if (filePath !== root && !filePath.startsWith(`${root}${path.sep}`)) {
+      response.writeHead(403).end('Forbidden');
+      return;
+    }
+    fs.readFile(filePath, (error, body) => {
+      if (error) {
+        response.writeHead(error.code === 'ENOENT' ? 404 : 500).end(error.code === 'ENOENT' ? 'Not found' : 'Server error');
+        return;
+      }
+      response.writeHead(200, { 'Content-Type': contentTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream' });
+      response.end(body);
+    });
+  });
+};
+
+const server = liveBitrix
+  ? createHttpsServer()
+  : spawn('python3', ['-m', 'http.server', String(port), '--bind', host], { cwd: root, stdio: 'ignore' });
 
 let browser;
 try {
-  await waitForServer();
+  if (liveBitrix) {
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(port, host, resolve);
+    });
+  } else {
+    await waitForServer();
+  }
   const { chromium } = await loadPlaywright();
   browser = await chromium.launch({
     headless: process.env.BITRIX_HEADLESS !== '0',
-    args: ['--host-resolver-rules=MAP fgn-nn.ru 127.0.0.1']
+    args: ['--host-resolver-rules=MAP fgn-nn.ru 127.0.0.1', '--ignore-certificate-errors']
   });
 
   for (const route of routes) {
@@ -213,11 +258,11 @@ try {
   fail(error.stack || error.message);
 } finally {
   await browser?.close();
-  server.kill('SIGTERM');
+  if (liveBitrix) await new Promise((resolve) => server.close(resolve));
+  else server.kill('SIGTERM');
 }
 
 if (errors.length) {
-  console.error(`Браузерная проверка не пройдена: ${errors.length}`);
   errors.forEach((error) => console.error(`- ${error}`));
   process.exit(1);
 }
