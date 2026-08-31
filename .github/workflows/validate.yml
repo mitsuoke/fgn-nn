@@ -23,18 +23,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Validate repository and SEO contracts
         run: npm run check
-      - name: Create local HTTPS certificate
-        run: |
-          openssl req -x509 -newkey rsa:2048 -nodes \
-            -keyout /tmp/fgn-test-key.pem \
-            -out /tmp/fgn-test-cert.pem \
-            -days 1 \
-            -subj "/CN=fgn-nn.ru" \
-            -addext "subjectAltName=DNS:fgn-nn.ru"
       - name: Run browser smoke test
-        env:
-          BITRIX_LIVE: "1"
-          BITRIX_HEADLESS: "0"
-          BITRIX_TLS_KEY: /tmp/fgn-test-key.pem
-          BITRIX_TLS_CERT: /tmp/fgn-test-cert.pem
-        run: xvfb-run -a npm run test:smoke
+        run: npm run test:smoke

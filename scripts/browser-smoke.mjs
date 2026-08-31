@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const host = '127.0.0.1';
 const port = 4173;
 const liveBitrix = process.env.BITRIX_LIVE === '1';
-const baseUrl = `${liveBitrix ? 'https' : 'http'}://fgn-nn.ru:${port}`;
+const baseUrl = liveBitrix ? `https://fgn-nn.ru:${port}` : `http://${host}:${port}`;
 const productionUrl = 'https://fgn-nn.ru';
 const healthUrl = `http://${host}:${port}`;
 const errors = [];
