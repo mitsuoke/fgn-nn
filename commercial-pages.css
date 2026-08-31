@@ -71,7 +71,7 @@
 .service-contact-options .contact-call:hover,.service-contact-options .contact-call:focus-visible{border-color:var(--blue)}
 .commercial-crm-panel{min-width:0;max-width:100%;padding:28px;background:#fff;box-shadow:var(--shadow);overflow:hidden}
 .commercial-crm-panel .b24-form{max-width:100%!important}
-.commercial-crm-panel iframe{display:block;max-width:100%;border:0}
+.commercial-crm-panel iframe{display:block;width:100%;height:760px;max-width:100%;border:0}
 .commercial-crm-consent{margin:18px 0 0;text-align:center}
 .commercial-crm-consent a{color:var(--blue);font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .commercial-crm-consent a:hover,.commercial-crm-consent a:focus-visible{text-decoration-thickness:2px}

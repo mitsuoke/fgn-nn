@@ -30,7 +30,7 @@ const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => pag
     return request.fulfill({
       status: 200,
       contentType: 'application/javascript',
-      body: "(function(){var host=document.querySelector('[data-commercial-crm]');if(!host)return;var frame=document.createElement('iframe');frame.src='https://b24-ud1314.bitrix24.ru/crm/form/test/';frame.title='Форма Bitrix24';frame.setAttribute('data-test-bitrix-frame','');frame.style.width='100%';frame.style.border='0';host.appendChild(frame);var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);host.appendChild(form);}());"
+      body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
     });
   }
   return request.fulfill({ status: 204, body: '' });
@@ -178,28 +178,57 @@ try {
     if (audit.brokenImages.length) fail(`${route}: не загрузились изображения: ${audit.brokenImages.join(', ')}.`);
     if (audit.horizontalOverflow > 1) fail(`${route}: горизонтальное переполнение ${audit.horizontalOverflow}px.`);
     if (commercialRoutes.includes(route)) {
-      const renderedForm = liveBitrix
-        ? page.locator('[data-commercial-crm] iframe[src*="b24-ud1314.bitrix24.ru"], [data-commercial-crm] .b24-form').first()
-        : page.locator('[data-test-bitrix-form]').first();
-      try {
-        await renderedForm.waitFor({ state: 'visible', timeout: 20000 });
-      } catch {
-        const diagnostic = await page.evaluate(() => ({
-          b24Nodes: [...document.querySelectorAll('[class*="b24"]')].map((element) => ({ tag: element.tagName, className: element.className, text: element.textContent?.trim().slice(0, 120) })),
-          iframes: [...document.querySelectorAll('iframe')].map((frame) => frame.src),
-          panelHtml: document.querySelector('[data-commercial-crm]')?.innerHTML.slice(0, 1200),
-          portalScripts: [...document.scripts].map((script) => script.src).filter((src) => src.includes('bitrix24.ru'))
-        }));
-        fail(`${route}: фактический интерфейс CRM-формы Bitrix24 не появился. Диагностика: ${JSON.stringify(diagnostic)}.`);
-      }
-      if (!liveBitrix && await page.locator('iframe[data-test-bitrix-frame]').count() !== 1) fail(`${route}: frame-src CSP не позволил загрузить фрейм CRM-формы.`);
-      if (liveBitrix && await renderedForm.count()) {
-        const size = await renderedForm.evaluate((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }));
-        if (size.width < 240 || size.height < 100) fail(`${route}: интерфейс Bitrix имеет некорректный размер ${Math.round(size.width)}×${Math.round(size.height)}.`);
-      }
-      const formId = await page.locator('[data-commercial-crm]').getAttribute('data-commercial-crm');
       const expectedId = route === '/kapsulirovanie/' ? '10' : '16';
-      if (formId !== expectedId) fail(`${route}: ожидается CRM-форма №${expectedId}, найдена №${formId || '—'}.`);
+      const formId = await page.locator('[data-commercial-crm]').getAttribute('data-commercial-crm');
+
+      if (formId !== expectedId) {
+        fail(`${route}: ожидается CRM-форма №${expectedId}, найдена №${formId || '—'}.`);
+      }
+
+      const hostFrame = page.locator(`iframe[data-bitrix-form-frame="${expectedId}"]`).first();
+
+      try {
+        await hostFrame.waitFor({ state: 'visible', timeout: 20000 });
+      } catch {
+        fail(`${route}: изолированный iframe CRM-формы №${expectedId} не появился.`);
+      }
+
+      const isolatedFrame = page.frames().find((frame) =>
+        frame.url().includes(`/forms/bitrix.html?form=${expectedId}`)
+      );
+
+      if (!isolatedFrame) {
+        fail(`${route}: страница изолированной CRM-формы №${expectedId} не загрузилась.`);
+      } else {
+        const renderedForm = isolatedFrame.locator('.b24-form-wrapper, .b24-form').first();
+
+        try {
+          await renderedForm.waitFor({ state: 'visible', timeout: 20000 });
+        } catch {
+          const diagnostic = await isolatedFrame.evaluate(() => ({
+            b24Nodes: [...document.querySelectorAll('[class*="b24"]')].map((element) => ({
+              tag: element.tagName,
+              className: element.className,
+              text: element.textContent?.trim().slice(0, 120)
+            })),
+            scripts: [...document.scripts].map((script) => script.src).filter(Boolean),
+            body: document.body.innerHTML.slice(0, 1200)
+          }));
+
+          fail(`${route}: фактический интерфейс CRM-формы Bitrix24 не появился внутри изолированного iframe. Диагностика: ${JSON.stringify(diagnostic)}.`);
+        }
+      }
+
+      if (await hostFrame.count()) {
+        const size = await hostFrame.evaluate((element) => ({
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height
+        }));
+
+        if (size.width < 240 || size.height < 100) {
+          fail(`${route}: iframe CRM-формы имеет некорректный размер ${Math.round(size.width)}×${Math.round(size.height)}.`);
+        }
+      }
     }
 
     const cspErrors = runtimeErrors.filter((message) => /content security policy|violates the following|refused to (?:frame|load|connect|execute)/i.test(message));
@@ -258,7 +287,27 @@ try {
       await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       if (overflow > 1) fail(`${route} @ ${width}px: горизонтальное переполнение ${overflow}px.`);
-      if (!await page.locator('[data-test-bitrix-form]').isVisible()) fail(`${route} @ ${width}px: CRM-форма не видна.`);
+      const expectedId = route === '/kapsulirovanie/' ? '10' : '16';
+      const hostFrame = page.locator(`iframe[data-bitrix-form-frame="${expectedId}"]`);
+      if (!await hostFrame.isVisible()) fail(`${route} @ ${width}px: iframe CRM-формы не виден.`);
+
+      const isolatedFrame = page.frames().find((frame) =>
+        frame.url().includes(`/forms/bitrix.html?form=${expectedId}`)
+      );
+
+      if (!isolatedFrame || !await isolatedFrame.locator('.b24-form-wrapper, .b24-form').first().isVisible()) {
+        fail(`${route} @ ${width}px: CRM-форма внутри iframe не видна.`);
+      }
+
+      const frameSize = await hostFrame.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height
+      }));
+
+      if (frameSize.width > width || frameSize.height < 100) {
+        fail(`${route} @ ${width}px: некорректный размер iframe CRM-формы ${Math.round(frameSize.width)}×${Math.round(frameSize.height)}.`);
+      }
+
       const quickLink = page.locator('.commercial-mobile-quick a[href="#contact"]');
       if (!await quickLink.isVisible()) fail(`${route} @ ${width}px: мобильный CTA расчёта не виден.`);
     }
