@@ -23,7 +23,7 @@ const mockExternalResources = (page) => page.route(/^https?:\/\/(?!127\.0\.0\.1:
     return request.fulfill({
       status: 200,
       contentType: 'application/javascript',
-      body: "(function(){var host=document.querySelector('[data-commercial-crm]');if(!host)return;var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);host.appendChild(form);}());"
+      body: "(function(){var host=document.querySelector('[data-commercial-crm]');if(!host)return;var frame=document.createElement('iframe');frame.src='https://b24-ud1314.bitrix24.ru/crm/form/test/';frame.title='Форма Bitrix24';frame.setAttribute('data-test-bitrix-frame','');frame.style.width='100%';frame.style.border='0';host.appendChild(frame);var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);host.appendChild(form);}());"
     });
   }
   return request.fulfill({ status: 204, body: '' });
@@ -106,6 +106,7 @@ try {
 
     if (commercialRoutes.includes(route)) {
       if (await page.locator('[data-test-bitrix-form]').count() !== 1) fail(`${route}: CSP или embed-код не позволили загрузить CRM-форму.`);
+      if (await page.locator('iframe[data-test-bitrix-frame]').count() !== 1) fail(`${route}: frame-src CSP не позволил загрузить фрейм CRM-формы.`);
       const formId = await page.locator('[data-commercial-crm]').getAttribute('data-commercial-crm');
       const expectedId = route === '/kapsulirovanie/' ? '10' : '16';
       if (formId !== expectedId) fail(`${route}: ожидается CRM-форма №${expectedId}, найдена №${formId || '—'}.`);

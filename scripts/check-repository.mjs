@@ -168,6 +168,10 @@ for (const config of commercialForms) {
   for (const source of [`'${hash}'`, 'https://cdn-ru.bitrix24.ru', 'https://b24-ud1314.bitrix24.ru']) {
     if (!csp.includes(source)) fail(`${config.file}: CSP не разрешает ${source}.`);
   }
+  for (const directive of ['frame-src', 'child-src']) {
+    const value = csp.match(new RegExp(`${directive}\\s+([^;]+)`))?.[1] || '';
+    if (!value.split(/\s+/).includes('https://b24-ud1314.bitrix24.ru')) fail(`${config.file}: ${directive} не разрешает фрейм CRM-формы Bitrix24.`);
+  }
   if (/script-src[^;]*(?:'unsafe-inline'|'unsafe-eval'|\*)/.test(csp)) fail(`${config.file}: script-src содержит широкое разрешение.`);
   if (config.id === '16') shortFormScripts.add(scripts[0][0]);
 }
