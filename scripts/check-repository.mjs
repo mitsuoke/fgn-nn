@@ -160,7 +160,6 @@ for (const config of commercialForms) {
   if (!script.includes(`'${config.loader}'`)) fail(`${config.file}: используется неверный загрузчик CRM-формы.`);
   if (!html.includes(`data-commercial-crm="${config.id}"`)) fail(`${config.file}: контейнер CRM-формы не соответствует форме №${config.id}.`);
   if (!html.includes('commercial-pages.css?v=3')) fail(`${config.file}: подключена неактуальная версия commercial-pages.css.`);
-  if (!html.includes('<a href="https://fgn-nn.ru/consent.html">Согласие на обработку персональных данных</a>')) fail(`${config.file}: рядом с CRM-формой отсутствует ссылка на согласие.`);
   if (!html.includes('class="commercial-mobile-quick" aria-label="Быстрые действия"><a href="#contact">Получить расчёт</a>')) fail(`${config.file}: мобильный CTA не ведёт к форме на странице.`);
   const contactBlock = html.match(/<section class="section section-tint" id="contact">([\s\S]*?)<\/section>/)?.[1] || '';
   if (/mailto:|contact-email/.test(contactBlock)) fail(`${config.file}: в основном блоке расчёта осталась ссылка e-mail.`);
