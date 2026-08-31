@@ -24,4 +24,6 @@ jobs:
       - name: Validate repository and SEO contracts
         run: npm run check
       - name: Run browser smoke test
+        env:
+          BITRIX_LIVE: "1"
         run: npm run test:smoke

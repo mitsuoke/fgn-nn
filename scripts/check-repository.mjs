@@ -177,6 +177,9 @@ for (const config of commercialForms) {
 }
 if (shortFormScripts.size !== 1) fail('Короткая CRM-форма №16 должна быть одинаковой на четырёх коммерческих страницах.');
 if (!read('index.html').includes('data-b24-form="inline/8/kodg8f"')) fail('index.html: существующая CRM-форма №8 на главной изменена или отсутствует.');
+const consentHtml = read('consent.html');
+if (!consentHtml.includes('После отправки формы сведения')) fail('consent.html: текст передачи данных не согласован со всеми CRM-формами.');
+if (consentHtml.includes('После нажатия кнопки «Отправить»')) fail('consent.html: осталось устаревшее название кнопки формы.');
 
 const versions = new Set();
 for (const file of htmlFiles) {

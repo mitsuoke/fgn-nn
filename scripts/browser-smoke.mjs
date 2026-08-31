@@ -6,6 +6,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const host = '127.0.0.1';
 const port = 4173;
 const baseUrl = `http://${host}:${port}`;
+const liveBitrix = process.env.BITRIX_LIVE === '1';
 const errors = [];
 const fail = (message) => errors.push(message);
 const products = JSON.parse(fs.readFileSync(path.join(root, 'data/products.json'), 'utf8')).products.filter((product) => product.active !== false);
@@ -19,6 +20,9 @@ const commercialRoutes = [
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
 const mockExternalResources = (page) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (request) => {
+  if (liveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
+    return request.continue();
+  }
   if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:10|16)\.js/.test(request.request().url())) {
     return request.fulfill({
       status: 200,
@@ -102,15 +106,29 @@ try {
     if (audit.unnamedControls) fail(`${route}: элементы управления без доступного имени — ${audit.unnamedControls}.`);
     if (audit.brokenImages.length) fail(`${route}: не загрузились изображения: ${audit.brokenImages.join(', ')}.`);
     if (audit.horizontalOverflow > 1) fail(`${route}: горизонтальное переполнение ${audit.horizontalOverflow}px.`);
-    if (runtimeErrors.length) fail(`${route}: ошибки браузера: ${[...new Set(runtimeErrors)].join(' | ')}.`);
-
     if (commercialRoutes.includes(route)) {
-      if (await page.locator('[data-test-bitrix-form]').count() !== 1) fail(`${route}: CSP или embed-код не позволили загрузить CRM-форму.`);
-      if (await page.locator('iframe[data-test-bitrix-frame]').count() !== 1) fail(`${route}: frame-src CSP не позволил загрузить фрейм CRM-формы.`);
+      const renderedForm = liveBitrix
+        ? page.locator('[data-commercial-crm] iframe[src*="b24-ud1314.bitrix24.ru"], [data-commercial-crm] .b24-form').first()
+        : page.locator('[data-test-bitrix-form]').first();
+      try {
+        await renderedForm.waitFor({ state: 'visible', timeout: 20000 });
+      } catch {
+        fail(`${route}: фактический интерфейс CRM-формы Bitrix24 не появился.`);
+      }
+      if (!liveBitrix && await page.locator('iframe[data-test-bitrix-frame]').count() !== 1) fail(`${route}: frame-src CSP не позволил загрузить фрейм CRM-формы.`);
+      if (liveBitrix && await renderedForm.count()) {
+        const size = await renderedForm.evaluate((element) => ({ width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }));
+        if (size.width < 240 || size.height < 100) fail(`${route}: интерфейс Bitrix имеет некорректный размер ${Math.round(size.width)}×${Math.round(size.height)}.`);
+      }
       const formId = await page.locator('[data-commercial-crm]').getAttribute('data-commercial-crm');
       const expectedId = route === '/kapsulirovanie/' ? '10' : '16';
       if (formId !== expectedId) fail(`${route}: ожидается CRM-форма №${expectedId}, найдена №${formId || '—'}.`);
     }
+
+    const cspErrors = runtimeErrors.filter((message) => /content security policy|violates the following|refused to (?:frame|load|connect|execute)/i.test(message));
+    if (cspErrors.length) fail(`${route}: ошибки CSP: ${[...new Set(cspErrors)].join(' | ')}.`);
+    const otherRuntimeErrors = runtimeErrors.filter((message) => !cspErrors.includes(message));
+    if (otherRuntimeErrors.length) fail(`${route}: ошибки браузера: ${[...new Set(otherRuntimeErrors)].join(' | ')}.`);
 
     if (route.startsWith('/products/') && route !== '/products/') {
       const product = products.find((item) => route.includes(`/${item.slug}/`));
