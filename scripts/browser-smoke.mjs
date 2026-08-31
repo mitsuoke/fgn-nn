@@ -9,7 +9,25 @@ const baseUrl = `http://${host}:${port}`;
 const errors = [];
 const fail = (message) => errors.push(message);
 const products = JSON.parse(fs.readFileSync(path.join(root, 'data/products.json'), 'utf8')).products.filter((product) => product.active !== false);
-const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`)];
+const commercialRoutes = [
+  '/kapsulirovanie/',
+  '/fasovka-sypuchih-produktov/',
+  '/fasovka-chaya-i-sborov/',
+  '/upakovka-i-markirovka-bad/',
+  '/kontraktnoe-proizvodstvo-bad/'
+];
+const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
+
+const mockExternalResources = (page) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (request) => {
+  if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:10|16)\.js/.test(request.request().url())) {
+    return request.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: "(function(){var host=document.querySelector('[data-commercial-crm]');if(!host)return;var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);host.appendChild(form);}());"
+    });
+  }
+  return request.fulfill({ status: 204, body: '' });
+});
 
 const loadPlaywright = async () => {
   try {
@@ -52,7 +70,7 @@ try {
     page.on('console', (message) => {
       if (message.type() === 'error' && !message.text().includes('ERR_BLOCKED_BY_CLIENT')) runtimeErrors.push(message.text());
     });
-    await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173)/, (request) => request.fulfill({ status: 204, body: '' }));
+    await mockExternalResources(page);
     const response = await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
     if (!response?.ok()) fail(`${route}: HTTP ${response?.status() || 'без ответа'}.`);
     await page.evaluate(async () => {
@@ -85,6 +103,13 @@ try {
     if (audit.brokenImages.length) fail(`${route}: не загрузились изображения: ${audit.brokenImages.join(', ')}.`);
     if (audit.horizontalOverflow > 1) fail(`${route}: горизонтальное переполнение ${audit.horizontalOverflow}px.`);
     if (runtimeErrors.length) fail(`${route}: ошибки браузера: ${[...new Set(runtimeErrors)].join(' | ')}.`);
+
+    if (commercialRoutes.includes(route)) {
+      if (await page.locator('[data-test-bitrix-form]').count() !== 1) fail(`${route}: CSP или embed-код не позволили загрузить CRM-форму.`);
+      const formId = await page.locator('[data-commercial-crm]').getAttribute('data-commercial-crm');
+      const expectedId = route === '/kapsulirovanie/' ? '10' : '16';
+      if (formId !== expectedId) fail(`${route}: ожидается CRM-форма №${expectedId}, найдена №${formId || '—'}.`);
+    }
 
     if (route.startsWith('/products/') && route !== '/products/') {
       const product = products.find((item) => route.includes(`/${item.slug}/`));
@@ -130,6 +155,20 @@ try {
     await page.close();
   }
 
+  for (const width of mobileWidths) {
+    const page = await browser.newPage({ viewport: { width, height: 844 } });
+    await mockExternalResources(page);
+    for (const route of commercialRoutes) {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      if (overflow > 1) fail(`${route} @ ${width}px: горизонтальное переполнение ${overflow}px.`);
+      if (!await page.locator('[data-test-bitrix-form]').isVisible()) fail(`${route} @ ${width}px: CRM-форма не видна.`);
+      const quickLink = page.locator('.commercial-mobile-quick a[href="#contact"]');
+      if (!await quickLink.isVisible()) fail(`${route} @ ${width}px: мобильный CTA расчёта не виден.`);
+    }
+    await page.close();
+  }
+
   const home = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await home.goto(baseUrl, { waitUntil: 'networkidle' });
   const track = home.locator('[data-carousel-track]');
@@ -153,4 +192,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`Браузерная проверка пройдена: ${routes.length} маршрутов, ${products.length} товаров, ${5} мобильных ширин.`);
+console.log(`Браузерная проверка пройдена: ${routes.length} маршрутов, ${products.length} товаров, ${commercialRoutes.length} коммерческих страниц, ${5} мобильных ширин.`);

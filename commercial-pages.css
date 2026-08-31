@@ -64,12 +64,17 @@
 
 .service-cta-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:80px;align-items:start}
 .service-cta-copy p{max-width:520px;margin:24px 0 0;color:var(--muted)}
-.service-contact-panel{display:flex;flex-direction:column;padding:34px;background:#fff;box-shadow:var(--shadow)}
-.service-contact-panel>span{margin-bottom:18px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
-.service-contact-panel .button{width:100%;margin-bottom:10px}
-.service-contact-panel .contact-call{border-color:var(--line);color:var(--blue);background:#fff}
-.service-contact-panel .contact-call:hover{border-color:var(--blue)}
-.service-contact-panel .contact-email{align-self:center;margin-top:10px;color:var(--blue);font-size:12px;font-weight:700;text-decoration:underline}
+.service-contact-options{display:flex;max-width:520px;flex-direction:column;margin-top:34px}
+.service-contact-options>span{margin-bottom:14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.service-contact-options .button{width:100%;margin-bottom:10px}
+.service-contact-options .contact-call{border-color:var(--line);color:var(--blue);background:#fff}
+.service-contact-options .contact-call:hover,.service-contact-options .contact-call:focus-visible{border-color:var(--blue)}
+.commercial-crm-panel{min-width:0;max-width:100%;padding:28px;background:#fff;box-shadow:var(--shadow);overflow:hidden}
+.commercial-crm-panel .b24-form{max-width:100%!important}
+.commercial-crm-panel iframe{display:block;max-width:100%;border:0}
+.commercial-crm-consent{margin:18px 0 0;text-align:center}
+.commercial-crm-consent a{color:var(--blue);font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.commercial-crm-consent a:hover,.commercial-crm-consent a:focus-visible{text-decoration-thickness:2px}
 .related-services{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:48px}
 .related-services a{display:flex;min-height:112px;align-items:flex-end;padding:22px;border:1px solid var(--line);color:var(--blue);font-size:16px;font-weight:700;transition:.2s}
 .related-services a:hover,.related-services a:focus-visible{background:var(--blue);color:#fff;outline:0;transform:translateY(-3px)}
@@ -112,7 +117,8 @@
   .requirement-card{padding:24px 20px}
   .faq-item summary{padding:21px 0;font-size:16px}
   .faq-answer{padding:0 0 22px}
-  .service-contact-panel{padding:23px 18px}
+  .service-contact-options{margin-top:28px}
+  .commercial-crm-panel{padding:16px 10px}
   .related-services{grid-template-columns:1fr}
   .related-services a{min-height:84px}
   .commercial-mobile-quick{position:fixed;z-index:490;right:0;bottom:0;left:0;display:grid;grid-template-columns:1fr 1fr;min-height:62px;padding:0 10px max(8px,env(safe-area-inset-bottom,0px));background:#0d1028;box-shadow:0 -8px 24px rgba(5,8,35,.18)}
@@ -129,6 +135,7 @@
   .spec-grid{grid-template-columns:1fr}
   .spec-card{min-height:120px}
   .service-section-head h2,.service-cta-copy h2{font-size:34px}
+  .commercial-crm-panel{margin-right:-4px;margin-left:-4px;padding:10px 4px}
 }
 
 @media(prefers-reduced-motion:reduce){
