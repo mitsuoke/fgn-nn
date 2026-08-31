@@ -26,4 +26,5 @@ jobs:
       - name: Run browser smoke test
         env:
           BITRIX_LIVE: "1"
-        run: npm run test:smoke
+          BITRIX_HEADLESS: "0"
+        run: xvfb-run -a npm run test:smoke

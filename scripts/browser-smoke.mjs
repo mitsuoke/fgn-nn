@@ -65,7 +65,7 @@ let browser;
 try {
   await waitForServer();
   const { chromium } = await loadPlaywright();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: process.env.BITRIX_HEADLESS !== '0' });
 
   for (const route of routes) {
     const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
