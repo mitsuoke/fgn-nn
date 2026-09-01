@@ -5,6 +5,7 @@ const baseUrl =
 
 const routes = [
   ['/', '8'],
+  ['/start.html', '16'],
   ['/kapsulirovanie/', '10'],
   ['/fasovka-sypuchih-produktov/', '16'],
   ['/fasovka-chaya-i-sborov/', '16'],
