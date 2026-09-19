@@ -294,6 +294,146 @@ try {
     await page.close();
   }
 
+  const bitrixGoalCases = [
+    ['/', '8', 'B24_FORM_8_END', 'event'],
+    ['/kapsulirovanie/', '10', 'B24_FORM_10_END', 'event'],
+    ['/kontraktnoe-proizvodstvo-bad/', '16', 'B24_FORM_16_END', 'dom']
+  ];
+
+  for (const [route, formId, goal, trigger] of bitrixGoalCases) {
+    const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+          status: 'granted',
+          decidedAt: Date.now(),
+          expiresAt: Date.now() + 60 * 60 * 1000
+        }));
+      } catch {}
+
+      window.__fgnGoalCalls = [];
+      window.ym = (...args) => window.__fgnGoalCalls.push(args);
+    });
+
+    await mockExternalResources(page, { useLiveBitrix: false });
+    await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+
+    const isolatedFrame = page.frames().find((frame) =>
+      frame.url().includes(`/forms/bitrix.html?form=${formId}`)
+    );
+
+    if (!isolatedFrame) {
+      fail(`${route}: goal bridge test could not find form ${formId} iframe.`);
+      await page.close();
+      continue;
+    }
+
+    if (trigger === 'event') {
+      await isolatedFrame.evaluate((id) => {
+        window.dispatchEvent(new CustomEvent('b24:form:send:success', {
+          detail: {
+            object: {
+              identification: {
+                id: Number(id)
+              }
+            }
+          }
+        }));
+      }, formId);
+    } else {
+      await isolatedFrame.evaluate(() => {
+        const success = document.createElement('div');
+        success.className = 'b24-form-state b24-form-success';
+        success.style.display = 'block';
+        document.body.appendChild(success);
+      });
+    }
+
+    try {
+      await page.waitForFunction(
+        (expectedGoal) =>
+          window.__fgnGoalCalls?.some((args) =>
+            args[0] === 111744945 &&
+            args[1] === 'reachGoal' &&
+            args[2] === expectedGoal
+          ),
+        goal,
+        { timeout: 3000 }
+      );
+    } catch {
+      fail(`${route}: successful form ${formId} did not emit ${goal}.`);
+    }
+
+    const calls = await page.evaluate((expectedGoal) =>
+      window.__fgnGoalCalls.filter((args) =>
+        args[0] === 111744945 &&
+        args[1] === 'reachGoal' &&
+        args[2] === expectedGoal
+      ).length,
+    goal);
+
+    if (calls !== 1) {
+      fail(`${route}: ${goal} emitted ${calls} times, expected exactly 1.`);
+    }
+
+    await page.close();
+  }
+
+  const deniedPage = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+
+  await deniedPage.addInitScript(() => {
+    try {
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'denied',
+        decidedAt: Date.now(),
+        expiresAt: Date.now() + 60 * 60 * 1000
+      }));
+    } catch {}
+
+    window.__fgnGoalCalls = [];
+    window.ym = (...args) => window.__fgnGoalCalls.push(args);
+  });
+
+  await mockExternalResources(deniedPage, { useLiveBitrix: false });
+  await deniedPage.goto(`${baseUrl}/kapsulirovanie/`, { waitUntil: 'networkidle' });
+
+  const deniedFrame = deniedPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=10')
+  );
+
+  if (!deniedFrame) {
+    fail('/kapsulirovanie/: denied-consent goal test could not find form 10 iframe.');
+  } else {
+    await deniedFrame.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('b24:form:send:success', {
+        detail: {
+          object: {
+            identification: {
+              id: 10
+            }
+          }
+        }
+      }));
+    });
+
+    await deniedPage.waitForTimeout(250);
+
+    const deniedCalls = await deniedPage.evaluate(() =>
+      window.__fgnGoalCalls.filter((args) =>
+        args[0] === 111744945 &&
+        args[1] === 'reachGoal' &&
+        args[2] === 'B24_FORM_10_END'
+      ).length
+    );
+
+    if (deniedCalls !== 0) {
+      fail('/kapsulirovanie/: B24_FORM_10_END fired without analytics consent.');
+    }
+  }
+
+  await deniedPage.close();
+
   const catalog = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await catalog.goto(`${baseUrl}/products/`, { waitUntil: 'networkidle' });
   if (await catalog.locator('[data-product-slug]').count() !== products.length) fail('/products/: в браузере отображаются не все товары.');
