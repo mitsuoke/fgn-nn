@@ -246,7 +246,7 @@ if (shortFormFrames.size !== 1) {
 const isolatedFormHtml = read('forms/bitrix.html');
 const isolatedFormScript = read('forms/bitrix-embed.js');
 
-if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=2"')) {
+if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=3"')) {
   fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
 }
 
@@ -290,6 +290,9 @@ for (const required of [
   "sec: '5s6fmf'",
   'loader_16.js',
   'fgn-bitrix-height',
+  'fgn-bitrix-success',
+  'b24:form:send:success',
+  '.b24-form-state.b24-form-success',
   'parent.postMessage'
 ]) {
   if (!isolatedFormScript.includes(required)) {
@@ -310,6 +313,11 @@ const commonScript = read('script.js');
 
 for (const required of [
   'fgn-bitrix-height',
+  'fgn-bitrix-success',
+  'B24_FORM_8_END',
+  'B24_FORM_10_END',
+  'B24_FORM_16_END',
+  "analyticsConsent === 'granted'",
   'event.origin !== window.location.origin',
   'event.source !== frame.contentWindow'
 ]) {
@@ -382,6 +390,20 @@ for (const file of htmlFiles) {
   }
 }
 if (versions.size !== 1 || !versions.has('19')) fail(`Версия styles.css должна быть единой: v=19; найдено ${[...versions].join(', ')}.`);
+
+for (const file of [
+  'index.html',
+  'start.html',
+  'kapsulirovanie/index.html',
+  'fasovka-sypuchih-produktov/index.html',
+  'fasovka-chaya-i-sborov/index.html',
+  'upakovka-i-markirovka-bad/index.html',
+  'kontraktnoe-proizvodstvo-bad/index.html'
+]) {
+  if (!read(file).includes('script.js?v=12')) {
+    fail(`${file}: страница с CRM-формой должна подключать script.js?v=12.`);
+  }
+}
 
 const sitemap = read('sitemap.xml');
 for (const product of active) {
