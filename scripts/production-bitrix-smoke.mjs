@@ -4,13 +4,13 @@ const baseUrl =
   process.env.BASE_URL || 'https://fgn-nn.ru';
 
 const routes = [
-  ['/', '8'],
-  ['/start.html', '16'],
-  ['/kapsulirovanie/', '10'],
-  ['/fasovka-sypuchih-produktov/', '16'],
-  ['/fasovka-chaya-i-sborov/', '16'],
-  ['/upakovka-i-markirovka-bad/', '16'],
-  ['/kontraktnoe-proizvodstvo-bad/', '16']
+  ['/', '8', 'B24_FORM_8_END'],
+  ['/start.html', '16', 'B24_FORM_16_END'],
+  ['/kapsulirovanie/', '10', 'B24_FORM_10_END'],
+  ['/fasovka-sypuchih-produktov/', '16', 'B24_FORM_16_END'],
+  ['/fasovka-chaya-i-sborov/', '16', 'B24_FORM_16_END'],
+  ['/upakovka-i-markirovka-bad/', '16', 'B24_FORM_16_END'],
+  ['/kontraktnoe-proizvodstvo-bad/', '16', 'B24_FORM_16_END']
 ];
 
 const widths = [390, 1366];
@@ -21,12 +21,25 @@ const browser = await chromium.launch({ headless: true });
 
 try {
   for (const width of widths) {
-    for (const [route, id] of routes) {
+    for (const [route, id, expectedGoal] of routes) {
       const page = await browser.newPage({
         viewport: {
           width,
           height: width < 500 ? 844 : 900
         }
+      });
+
+      await page.addInitScript(() => {
+        try {
+          localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+            status: 'granted',
+            decidedAt: Date.now(),
+            expiresAt: Date.now() + 60 * 60 * 1000
+          }));
+        } catch {}
+
+        window.__fgnGoalCalls = [];
+        window.ym = (...args) => window.__fgnGoalCalls.push(args);
       });
 
       const runtimeErrors = [];
@@ -167,6 +180,54 @@ try {
         if (overflow > 1) {
           fail(
             `${route} @ ${width}px: overflow=${overflow}px`
+          );
+        }
+
+        await frame.evaluate((formId) => {
+          window.dispatchEvent(new CustomEvent(
+            'b24:form:send:success',
+            {
+              detail: {
+                object: {
+                  identification: {
+                    id: Number(formId)
+                  }
+                }
+              }
+            }
+          ));
+        }, id);
+
+        try {
+          await page.waitForFunction(
+            (goal) =>
+              window.__fgnGoalCalls?.some((args) =>
+                args[0] === 111744945 &&
+                args[1] === 'reachGoal' &&
+                args[2] === goal
+              ),
+            expectedGoal,
+            { timeout: 3000 }
+          );
+        } catch {
+          fail(
+            `${route} @ ${width}px: форма №${id} ` +
+            `не передала цель ${expectedGoal}`
+          );
+        }
+
+        const goalCalls = await page.evaluate((goal) =>
+          window.__fgnGoalCalls.filter((args) =>
+            args[0] === 111744945 &&
+            args[1] === 'reachGoal' &&
+            args[2] === goal
+          ).length,
+        expectedGoal);
+
+        if (goalCalls !== 1) {
+          fail(
+            `${route} @ ${width}px: цель ${expectedGoal} ` +
+            `вызвана ${goalCalls} раз вместо 1`
           );
         }
 

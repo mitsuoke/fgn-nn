@@ -41,6 +41,59 @@ if (!config) {
   document.head.appendChild(loader);
 
   let lastHeight = 0;
+  let successStateVisible = false;
+  let lastSuccessAt = 0;
+
+  const emitSuccess = () => {
+    const now = Date.now();
+
+    if (now - lastSuccessAt < 2000) return;
+
+    lastSuccessAt = now;
+
+    parent.postMessage(
+      {
+        type: 'fgn-bitrix-success',
+        form: formId
+      },
+      location.origin
+    );
+  };
+
+  const reportSuccessState = () => {
+    const success = document.querySelector(
+      '.b24-form-state.b24-form-success'
+    );
+
+    const visible = Boolean(
+      success &&
+      getComputedStyle(success).display !== 'none' &&
+      getComputedStyle(success).visibility !== 'hidden'
+    );
+
+    if (!visible) {
+      successStateVisible = false;
+      return;
+    }
+
+    if (successStateVisible) return;
+
+    successStateVisible = true;
+    emitSuccess();
+  };
+
+  window.addEventListener(
+    'b24:form:send:success',
+    (event) => {
+      const emittedFormId =
+        event.detail?.object?.identification?.id;
+
+      if (String(emittedFormId) !== formId) return;
+
+      successStateVisible = true;
+      emitSuccess();
+    }
+  );
 
   const reportHeight = () => {
     const wrapper = document.querySelector('.b24-form-wrapper');
@@ -70,14 +123,27 @@ if (!config) {
   new ResizeObserver(reportHeight)
     .observe(document.body);
 
-  new MutationObserver(reportHeight)
-    .observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true
-    });
+  new MutationObserver(() => {
+    reportHeight();
+    reportSuccessState();
+  }).observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true
+  });
 
-  window.addEventListener('load', reportHeight);
-  setTimeout(reportHeight, 1000);
-  setTimeout(reportHeight, 3000);
+  window.addEventListener('load', () => {
+    reportHeight();
+    reportSuccessState();
+  });
+
+  setTimeout(() => {
+    reportHeight();
+    reportSuccessState();
+  }, 1000);
+
+  setTimeout(() => {
+    reportHeight();
+    reportSuccessState();
+  }, 3000);
 }

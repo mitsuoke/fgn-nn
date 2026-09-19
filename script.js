@@ -83,7 +83,12 @@ const ANALYTICS_CONSENT_TTL = 365 * 24 * 60 * 60 * 1000;
 let metrikaLoading = false;
 
 const reachGoal = (goal) => {
-  if (typeof window.ym === 'function') window.ym(METRIKA_ID, 'reachGoal', goal);
+  if (
+    analyticsConsent === 'granted' &&
+    typeof window.ym === 'function'
+  ) {
+    window.ym(METRIKA_ID, 'reachGoal', goal);
+  }
 };
 
 const loadMetrika = () => {
@@ -221,22 +226,39 @@ document.addEventListener('click', (event) => {
 });
 
 
+const BITRIX_SUCCESS_GOALS = Object.freeze({
+  '8': 'B24_FORM_8_END',
+  '10': 'B24_FORM_10_END',
+  '16': 'B24_FORM_16_END',
+});
+
 window.addEventListener('message', (event) => {
   if (event.origin !== window.location.origin) return;
 
   const data = event.data;
-  if (!data || data.type !== 'fgn-bitrix-height') return;
+  if (!data || typeof data !== 'object') return;
 
+  const formId = String(data.form || '');
   const frame = document.querySelector(
-    `iframe[data-bitrix-form-frame="${data.form}"]`
+    `iframe[data-bitrix-form-frame="${formId}"]`
   );
 
   if (!frame || event.source !== frame.contentWindow) return;
 
-  const height = Number(data.height);
-  if (!Number.isFinite(height) || height < 100 || height > 5000) return;
+  if (data.type === 'fgn-bitrix-height') {
+    const height = Number(data.height);
+    if (!Number.isFinite(height) || height < 100 || height > 5000) return;
 
-  frame.style.height = `${Math.ceil(height)}px`;
+    frame.style.height = `${Math.ceil(height)}px`;
+    return;
+  }
+
+  if (data.type === 'fgn-bitrix-success') {
+    const goal = BITRIX_SUCCESS_GOALS[formId];
+    if (!goal) return;
+
+    reachGoal(goal);
+  }
 });
 
 const year = document.querySelector('#year');
