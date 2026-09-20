@@ -22,19 +22,77 @@ const commercialRoutes = [
 ];
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
-const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/, (request) => {
-  if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
-    return request.continue();
+const mockExternalResources = (
+  page,
+  {
+    useLiveBitrix = liveBitrix,
+    onQualifiedDemand = null,
+    qualifiedDemandHttpStatus = 201,
+    qualifiedDemandStatus = 'RECORDED'
+  } = {}
+) => page.route(
+  /^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/,
+  async (request) => {
+    const url = request.request().url();
+
+    if (
+      /^https:\/\/fgn-qd-ingress\.fgn-9c244031b99b\.workers\.dev\/v1\/qualified-demand\/form-start$/.test(url)
+    ) {
+      let body = null;
+
+      try {
+        body = JSON.parse(
+          request.request().postData() || 'null'
+        );
+      } catch {}
+
+      if (onQualifiedDemand) {
+        await onQualifiedDemand({
+          body,
+          headers: request.request().headers(),
+          method: request.request().method()
+        });
+      }
+
+      return request.fulfill({
+        status: qualifiedDemandHttpStatus,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          qualifiedDemandHttpStatus >= 200 &&
+          qualifiedDemandHttpStatus < 300
+            ? {
+                status: qualifiedDemandStatus,
+                eventId: body?.eventId || null,
+                trustState: 'PUBLIC_CLIENT_UNAUTHENTICATED',
+                canonicalQualifiedDemandAllowed: false
+              }
+            : {
+                error: 'SYNTHETIC_FAILURE'
+              }
+        )
+      });
+    }
+
+    if (
+      useLiveBitrix &&
+      /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(url)
+    ) {
+      return request.continue();
+    }
+
+    if (
+      /cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(url)
+    ) {
+      return request.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
+      });
+    }
+
+    return request.fulfill({ status: 204, body: '' });
   }
-  if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(request.request().url())) {
-    return request.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
-    });
-  }
-  return request.fulfill({ status: 204, body: '' });
-});
+);
 
 const loadPlaywright = async () => {
   try {
@@ -293,6 +351,284 @@ try {
     }
     await page.close();
   }
+
+  const qualifiedDemandRequests = [];
+  const qdContext = await browser.newContext({
+    viewport: { width: 1366, height: 900 }
+  });
+
+  const qdPage = await qdContext.newPage();
+
+  await mockExternalResources(qdPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: ({ body, headers, method }) => {
+      qualifiedDemandRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdPage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  const qdHomeFrame = qdPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=8')
+  );
+
+  if (!qdHomeFrame) {
+    fail('/: QD test could not find form 8 iframe.');
+  } else {
+    const input = qdHomeFrame.locator(
+      '.b24-form input[aria-label="Имя"]'
+    );
+
+    await input.focus();
+    await qdPage.waitForTimeout(50);
+
+    if (qualifiedDemandRequests.length !== 0) {
+      fail('/: QD emitted on focus instead of value change.');
+    }
+
+    await qdHomeFrame.evaluate(() => {
+      const form = document.querySelector('.b24-form');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      form?.appendChild(checkbox);
+      checkbox.click();
+    });
+
+    await qdPage.waitForTimeout(50);
+
+    if (qualifiedDemandRequests.length !== 0) {
+      fail('/: QD emitted for checkbox-only change.');
+    }
+
+    await input.fill('');
+    await qdPage.waitForTimeout(50);
+
+    if (qualifiedDemandRequests.length !== 0) {
+      fail('/: QD emitted for empty input.');
+    }
+
+    await input.fill('x');
+
+    for (
+      let attempt = 0;
+      attempt < 20 &&
+      qualifiedDemandRequests.length === 0;
+      attempt += 1
+    ) {
+      await qdPage.waitForTimeout(50);
+    }
+
+    if (qualifiedDemandRequests.length !== 1) {
+      fail(
+        `/: first meaningful input emitted ${qualifiedDemandRequests.length} QD requests instead of 1.`
+      );
+    } else {
+      const request = qualifiedDemandRequests[0];
+      const payload = request.body || {};
+      const exactKeys = [
+        'schemaVersion',
+        'eventId',
+        'identityRef',
+        'identityState',
+        'eventKind',
+        'propertyRef',
+        'formRef',
+        'routeRef',
+        'cohortRef',
+        'occurredAt',
+        'sourceRevision'
+      ].sort();
+
+      if (
+        JSON.stringify(Object.keys(payload).sort()) !==
+        JSON.stringify(exactKeys)
+      ) {
+        fail(
+          '/: QD payload does not have the exact strict event keys.'
+        );
+      }
+
+      const expected = {
+        schemaVersion: '1.0.0',
+        identityState:
+          'PROVISIONAL_FIRST_PARTY_BROWSER_IDENTITY',
+        eventKind: 'FIRST_MEANINGFUL_FORM_INPUT',
+        propertyRef: 'property:fgn-public-site',
+        formRef: 'bitrix:crm-form:8',
+        routeRef: 'route:home',
+        cohortRef:
+          'fgn:web-commercial-form-to-crm-cohort:v1',
+        sourceRevision: 'site:fgn-form-start:v1'
+      };
+
+      for (const [key, value] of Object.entries(expected)) {
+        if (payload[key] !== value) {
+          fail(
+            `/: QD payload ${key}=${payload[key]} instead of ${value}.`
+          );
+        }
+      }
+
+      if (
+        !/^fgnqd_evt_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          payload.eventId || ''
+        )
+      ) {
+        fail('/: QD eventId is not an opaque UUIDv4 event id.');
+      }
+
+      if (
+        !/^fgnqd_id_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          payload.identityRef || ''
+        )
+      ) {
+        fail('/: QD identityRef is not an opaque UUIDv4 identity id.');
+      }
+
+      if (
+        request.method !== 'POST' ||
+        request.headers['content-type'] !== 'application/json'
+      ) {
+        fail('/: QD request transport contract is incorrect.');
+      }
+
+      const serialized = JSON.stringify(payload);
+
+      for (const forbidden of [
+        'fieldName',
+        'fieldValue',
+        'contactEmail',
+        'contactPhone',
+        '"x"'
+      ]) {
+        if (serialized.includes(forbidden)) {
+          fail(
+            `/: QD payload leaked forbidden form data marker ${forbidden}.`
+          );
+        }
+      }
+    }
+
+    await input.fill('xy');
+    await qdPage.waitForTimeout(100);
+
+    if (qualifiedDemandRequests.length !== 1) {
+      fail('/: repeated meaningful input emitted duplicate QD request.');
+    }
+  }
+
+  await qdPage.close();
+
+  const qdSecondPage = await qdContext.newPage();
+
+  await mockExternalResources(qdSecondPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: ({ body, headers, method }) => {
+      qualifiedDemandRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdSecondPage.goto(
+    `${baseUrl}/kapsulirovanie/`,
+    { waitUntil: 'networkidle' }
+  );
+
+  const qdSecondFrame = qdSecondPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=10')
+  );
+
+  if (!qdSecondFrame) {
+    fail(
+      '/kapsulirovanie/: QD dedup test could not find form 10 iframe.'
+    );
+  } else {
+    await qdSecondFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('z');
+    await qdSecondPage.waitForTimeout(100);
+
+    if (qualifiedDemandRequests.length !== 1) {
+      fail(
+        '/kapsulirovanie/: same browser identity emitted a second QD request.'
+      );
+    }
+  }
+
+  await qdSecondPage.close();
+  await qdContext.close();
+
+  const qdFailurePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  const qdFailureErrors = [];
+  let qdFailureRequests = 0;
+
+  qdFailurePage.on(
+    'pageerror',
+    (error) => qdFailureErrors.push(error.message)
+  );
+
+  await mockExternalResources(qdFailurePage, {
+    useLiveBitrix: false,
+    qualifiedDemandHttpStatus: 503,
+    onQualifiedDemand: () => {
+      qdFailureRequests += 1;
+    }
+  });
+
+  await qdFailurePage.goto(
+    `${baseUrl}/kontraktnoe-proizvodstvo-bad/`,
+    { waitUntil: 'networkidle' }
+  );
+
+  const qdFailureFrame = qdFailurePage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=16')
+  );
+
+  if (!qdFailureFrame) {
+    fail(
+      '/kontraktnoe-proizvodstvo-bad/: QD failure test could not find form 16 iframe.'
+    );
+  } else {
+    const input = qdFailureFrame.locator(
+      '.b24-form input[aria-label="Имя"]'
+    );
+    await input.fill('q');
+    await qdFailurePage.waitForTimeout(100);
+
+    if (qdFailureRequests !== 1) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: failed Worker did not receive exactly one attempt.'
+      );
+    }
+
+    if (!await input.isEnabled()) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: Worker failure disabled the form input.'
+      );
+    }
+
+    if (
+      !await qdFailureFrame
+        .locator('.b24-form button[type="submit"]')
+        .isEnabled()
+    ) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: Worker failure disabled form submission.'
+      );
+    }
+
+    if (qdFailureErrors.length) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: Worker failure surfaced page errors: ' +
+        qdFailureErrors.join(' | ')
+      );
+    }
+  }
+
+  await qdFailurePage.close();
 
   const bitrixGoalCases = [
     ['/', '8', 'B24_FORM_8_END', 'event'],
