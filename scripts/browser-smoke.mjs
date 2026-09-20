@@ -417,6 +417,38 @@ try {
     ) {
       fail('/: QD localStorage was created without analytics consent.');
     }
+
+    await qdNoConsentPage
+      .locator('#cookie-analytics-accept')
+      .click();
+
+    await qdNoConsentFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('after-late-consent');
+
+    await qdNoConsentPage.waitForTimeout(100);
+
+    if (qdNoConsentRequests.length !== 0) {
+      fail(
+        '/: input after late consent was mislabeled as the first meaningful QD input.'
+      );
+    }
+
+    const qdLateConsentStorage = await qdNoConsentFrame.evaluate(() => ({
+      identity: localStorage.getItem('fgn_qd_identity_v1'),
+      pending: localStorage.getItem('fgn_qd_pending_v1'),
+      completed: localStorage.getItem('fgn_qd_completed_v1')
+    }));
+
+    if (
+      qdLateConsentStorage.identity !== null ||
+      qdLateConsentStorage.pending !== null ||
+      qdLateConsentStorage.completed !== null
+    ) {
+      fail(
+        '/: late consent created QD storage after the form had already started.'
+      );
+    }
   }
 
   await qdNoConsentPage.close();
@@ -749,8 +781,13 @@ try {
     } catch {}
   });
 
+  let qdWithdrawRequests = 0;
+
   await mockExternalResources(qdWithdrawPage, {
-    useLiveBitrix: false
+    useLiveBitrix: false,
+    onQualifiedDemand: () => {
+      qdWithdrawRequests += 1;
+    }
   });
 
   await qdWithdrawPage.goto(`${baseUrl}/`, {
@@ -785,6 +822,39 @@ try {
     qdAfterWithdrawal.completed !== null
   ) {
     fail('/: QD analytics storage survived consent withdrawal.');
+  }
+
+  const qdWithdrawFrame = qdWithdrawPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=8')
+  );
+
+  if (!qdWithdrawFrame) {
+    fail('/: post-withdrawal QD test could not find form 8 iframe.');
+  } else {
+    await qdWithdrawFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('after-withdrawal');
+
+    await qdWithdrawPage.waitForTimeout(100);
+
+    if (qdWithdrawRequests !== 0) {
+      fail('/: QD emitted after analytics consent withdrawal.');
+    }
+
+    const qdStorageAfterPostWithdrawalInput =
+      await qdWithdrawFrame.evaluate(() => ({
+        identity: localStorage.getItem('fgn_qd_identity_v1'),
+        pending: localStorage.getItem('fgn_qd_pending_v1'),
+        completed: localStorage.getItem('fgn_qd_completed_v1')
+      }));
+
+    if (
+      qdStorageAfterPostWithdrawalInput.identity !== null ||
+      qdStorageAfterPostWithdrawalInput.pending !== null ||
+      qdStorageAfterPostWithdrawalInput.completed !== null
+    ) {
+      fail('/: QD storage was recreated after analytics withdrawal.');
+    }
   }
 
   await qdWithdrawPage.close();
