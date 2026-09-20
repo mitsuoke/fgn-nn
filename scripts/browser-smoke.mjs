@@ -817,6 +817,8 @@ try {
   });
 
   await qdWithdrawPage.addInitScript(() => {
+    if (window.top !== window) return;
+
     try {
       const now = Date.now();
       localStorage.setItem('fgn_analytics_consent', JSON.stringify({
@@ -1011,6 +1013,8 @@ try {
   const qdRevokeFailureErrors = [];
 
   await qdRevokeFailurePage.addInitScript(() => {
+    if (window.top !== window) return;
+
     try {
       const now = Date.now();
       localStorage.setItem('fgn_analytics_consent', JSON.stringify({
