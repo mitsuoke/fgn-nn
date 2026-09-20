@@ -252,11 +252,18 @@ const isMeaningfulValueChange = (target) => {
         'button',
         'submit',
         'reset',
-        'image',
-        'checkbox'
+        'image'
       ].includes(type)
     ) {
       return false;
+    }
+
+    if (type === 'checkbox') {
+      if (target.closest('.b24-form-control-agreement')) {
+        return false;
+      }
+
+      return target.checked;
     }
 
     if (type === 'radio') return target.checked;
