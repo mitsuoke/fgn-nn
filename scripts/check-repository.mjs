@@ -319,6 +319,7 @@ for (const required of [
   'fgn_analytics_consent',
   'hasQualifiedDemandAnalyticsConsent',
   'clearQualifiedDemandStorage',
+  'meaningfulInputObservedWithoutConsent',
   "credentials: 'omit'",
   "referrerPolicy: 'no-referrer'",
   "'checkbox'",
