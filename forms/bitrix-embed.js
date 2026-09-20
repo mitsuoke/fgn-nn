@@ -433,8 +433,20 @@ if (!config) {
     }
   );
 
+  let meaningfulInputObservedWithoutConsent = false;
+
   const handleMeaningfulValueChange = (event) => {
     if (!isMeaningfulValueChange(event.target)) return;
+
+    if (!hasQualifiedDemandAnalyticsConsent()) {
+      meaningfulInputObservedWithoutConsent = true;
+      return;
+    }
+
+    // If the visitor already started this form before analytics consent,
+    // a later input is not truthfully the FIRST meaningful input.
+    // Keep this page lifecycle uncounted rather than relabeling it.
+    if (meaningfulInputObservedWithoutConsent) return;
 
     void emitQualifiedDemandFormStart();
   };
