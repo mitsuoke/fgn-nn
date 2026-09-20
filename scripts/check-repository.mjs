@@ -316,6 +316,9 @@ for (const required of [
   'fgn_qd_identity_v1',
   'fgn_qd_pending_v1',
   'fgn_qd_completed_v1',
+  'fgn_analytics_consent',
+  'hasQualifiedDemandAnalyticsConsent',
+  'clearQualifiedDemandStorage',
   "credentials: 'omit'",
   "referrerPolicy: 'no-referrer'",
   "'checkbox'",
@@ -340,16 +343,32 @@ for (const forbidden of [
 }
 
 for (const file of htmlFiles) {
+  const html = read(file);
+
+  if (html.includes('id="cookie-notice"')) {
+    if (!html.includes(
+      'собственное измерение начала заполнения коммерческой формы'
+    )) {
+      fail(`${file}: consent banner не описывает first-party QD аналитику.`);
+    }
+
+    if (html.includes(
+      'С вашего разрешения мы используем Яндекс Метрику, чтобы понимать, как улучшать сайт.'
+    )) {
+      fail(`${file}: осталась устаревшая формулировка consent banner только про Метрику.`);
+    }
+  }
+
   if (
     file !== 'forms/bitrix.html' &&
-    read(file).includes("'unsafe-eval'")
+    html.includes("'unsafe-eval'")
   ) {
     fail(`${file}: unsafe-eval разрешён вне изолированной CRM-страницы.`);
   }
 
   if (
     file !== 'forms/bitrix.html' &&
-    read(file).includes(
+    html.includes(
       'fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
     )
   ) {
@@ -359,9 +378,27 @@ for (const file of htmlFiles) {
   }
 }
 
+const privacyHtml = read('privacy.html');
+
+for (const required of [
+  'собственное first-party измерение начала заполнения коммерческой формы',
+  'First-party идентификаторы Qualified Demand создаются и сохраняются только при действующем разрешении аналитики',
+  'Cloudflare Workers и Cloudflare D1',
+  'юрисдикции Европейского союза'
+]) {
+  if (!privacyHtml.includes(required)) {
+    fail(`privacy.html: отсутствует EU/QD disclosure: ${required}.`);
+  }
+}
+
 const commonScript = read('script.js');
 
 for (const required of [
+  'QD_ANALYTICS_STORAGE_KEYS',
+  'fgn_qd_identity_v1',
+  'fgn_qd_pending_v1',
+  'fgn_qd_completed_v1',
+  'clearMetrikaStorage',
   'fgn-bitrix-height',
   'fgn-bitrix-success',
   'B24_FORM_8_END',
