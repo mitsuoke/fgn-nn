@@ -409,9 +409,12 @@ try {
 
     await qdHomeFrame.evaluate(() => {
       const form = document.querySelector('.b24-form');
+      const agreement = document.createElement('div');
+      agreement.className = 'b24-form-control-agreement';
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
-      form?.appendChild(checkbox);
+      agreement.appendChild(checkbox);
+      form?.appendChild(agreement);
       checkbox.click();
     });
 
