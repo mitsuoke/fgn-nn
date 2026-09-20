@@ -22,19 +22,73 @@ const commercialRoutes = [
 ];
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
-const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/, (request) => {
-  if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
-    return request.continue();
+const qdEndpoint =
+  'https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev' +
+  '/v1/qualified-demand/form-start';
+
+const mockExternalResources = (
+  page,
+  {
+    useLiveBitrix = liveBitrix,
+    qdHandler = null
+  } = {}
+) => page.route(
+  /^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/,
+  (route) => {
+    const request = route.request();
+    const url = request.url();
+
+    if (url === qdEndpoint) {
+      if (qdHandler) return qdHandler(route);
+
+      const origin =
+        request.headers().origin || 'http://127.0.0.1:4173';
+
+      if (request.method() === 'OPTIONS') {
+        return route.fulfill({
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          }
+        });
+      }
+
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': origin
+        },
+        body: JSON.stringify({
+          status: 'RECORDED',
+          trustState: 'PUBLIC_CLIENT_UNAUTHENTICATED',
+          canonicalQualifiedDemandAllowed: false
+        })
+      });
+    }
+
+    if (
+      useLiveBitrix &&
+      /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(url)
+    ) {
+      return route.continue();
+    }
+
+    if (
+      /cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(url)
+    ) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
+      });
+    }
+
+    return route.fulfill({ status: 204, body: '' });
   }
-  if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(request.request().url())) {
-    return request.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
-    });
-  }
-  return request.fulfill({ status: 204, body: '' });
-});
+);
 
 const loadPlaywright = async () => {
   try {
@@ -379,6 +433,253 @@ try {
 
     await page.close();
   }
+
+  const qdPage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  const qdPosts = [];
+
+  await mockExternalResources(qdPage, {
+    useLiveBitrix: false,
+    qdHandler: (route) => {
+      const request = route.request();
+      const origin =
+        request.headers().origin || 'http://127.0.0.1:4173';
+
+      if (request.method() === 'OPTIONS') {
+        return route.fulfill({
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          }
+        });
+      }
+
+      qdPosts.push(JSON.parse(request.postData() || '{}'));
+
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        headers: {
+          'Access-Control-Allow-Origin': origin
+        },
+        body: JSON.stringify({
+          status: 'RECORDED',
+          trustState: 'PUBLIC_CLIENT_UNAUTHENTICATED',
+          canonicalQualifiedDemandAllowed: false
+        })
+      });
+    }
+  });
+
+  await qdPage.goto(
+    `${baseUrl}/kapsulirovanie/`,
+    { waitUntil: 'networkidle' }
+  );
+
+  const qdFrame = qdPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=10')
+  );
+
+  if (!qdFrame) {
+    fail('/kapsulirovanie/: QD test could not find form 10 iframe.');
+  } else {
+    const input = qdFrame
+      .locator('[data-test-bitrix-form] input')
+      .first();
+
+    await input.focus();
+    await qdPage.waitForTimeout(150);
+
+    if (qdPosts.length !== 0) {
+      fail('/kapsulirovanie/: focus incorrectly emitted QD event.');
+    }
+
+    await input.fill('Тестовый ввод');
+    await qdPage.waitForTimeout(300);
+
+    if (qdPosts.length !== 1) {
+      fail(
+        '/kapsulirovanie/: first meaningful input emitted ' +
+        `${qdPosts.length} QD events instead of 1.`
+      );
+    } else {
+      const payload = qdPosts[0];
+      const expectedKeys = [
+        'schemaVersion',
+        'eventId',
+        'identityRef',
+        'identityState',
+        'eventKind',
+        'propertyRef',
+        'formRef',
+        'routeRef',
+        'cohortRef',
+        'occurredAt',
+        'sourceRevision'
+      ].sort();
+
+      if (
+        JSON.stringify(Object.keys(payload).sort()) !==
+        JSON.stringify(expectedKeys)
+      ) {
+        fail(
+          '/kapsulirovanie/: QD payload contains unexpected fields: ' +
+          Object.keys(payload).sort().join(', ')
+        );
+      }
+
+      if (
+        payload.schemaVersion !== '1.0.0' ||
+        payload.identityState !==
+          'PROVISIONAL_FIRST_PARTY_BROWSER_IDENTITY' ||
+        payload.eventKind !==
+          'FIRST_MEANINGFUL_FORM_INPUT' ||
+        payload.propertyRef !==
+          'property:fgn-public-site' ||
+        payload.formRef !==
+          'bitrix:crm-form:10' ||
+        payload.routeRef !==
+          'route:/kapsulirovanie/' ||
+        payload.cohortRef !==
+          'fgn:web-commercial-form-to-crm-cohort:v1' ||
+        payload.sourceRevision !==
+          'site:fgn-form-start:v1'
+      ) {
+        fail(
+          '/kapsulirovanie/: QD payload machine coordinates are invalid.'
+        );
+      }
+
+      if (
+        !/^fgnqd_evt_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          payload.eventId || ''
+        ) ||
+        !/^fgnqd_id_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          payload.identityRef || ''
+        )
+      ) {
+        fail('/kapsulirovanie/: QD opaque ids are invalid.');
+      }
+
+      if (
+        JSON.stringify(payload).includes('Тестовый ввод')
+      ) {
+        fail(
+          '/kapsulirovanie/: QD payload leaked the form field value.'
+        );
+      }
+    }
+
+    await input.fill('Повторный ввод');
+    await qdPage.waitForTimeout(300);
+
+    if (qdPosts.length !== 1) {
+      fail(
+        '/kapsulirovanie/: repeated input emitted duplicate QD POST.'
+      );
+    }
+
+    const storage = await qdFrame.evaluate(() => ({
+      local: Object.keys(localStorage).filter((key) =>
+        /fgnqd|qualified.?demand/i.test(key)
+      ),
+      session: Object.keys(sessionStorage).filter((key) =>
+        /fgnqd|qualified.?demand/i.test(key)
+      ),
+      cookies: document.cookie
+    }));
+
+    if (
+      storage.local.length ||
+      storage.session.length ||
+      /fgnqd|qualified.?demand/i.test(storage.cookies)
+    ) {
+      fail(
+        '/kapsulirovanie/: QD identity leaked into persistent browser storage.'
+      );
+    }
+  }
+
+  await qdPage.close();
+
+  const qdFailurePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  const qdFailurePageErrors = [];
+
+  qdFailurePage.on('pageerror', (error) => {
+    qdFailurePageErrors.push(error.message);
+  });
+
+  await mockExternalResources(qdFailurePage, {
+    useLiveBitrix: false,
+    qdHandler: (route) => {
+      const request = route.request();
+      const origin =
+        request.headers().origin || 'http://127.0.0.1:4173';
+
+      if (request.method() === 'OPTIONS') {
+        return route.fulfill({
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          }
+        });
+      }
+
+      return route.abort('failed');
+    }
+  });
+
+  await qdFailurePage.goto(
+    `${baseUrl}/kapsulirovanie/`,
+    { waitUntil: 'networkidle' }
+  );
+
+  const qdFailureFrame = qdFailurePage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=10')
+  );
+
+  if (!qdFailureFrame) {
+    fail('/kapsulirovanie/: QD fail-open test could not find form 10 iframe.');
+  } else {
+    const input = qdFailureFrame
+      .locator('[data-test-bitrix-form] input')
+      .first();
+
+    await input.fill('Форма должна работать');
+    await qdFailurePage.waitForTimeout(250);
+
+    if ((await input.inputValue()) !== 'Форма должна работать') {
+      fail(
+        '/kapsulirovanie/: Worker failure altered the Bitrix field value.'
+      );
+    }
+
+    if (
+      !await qdFailureFrame
+        .locator('[data-test-bitrix-form] button[type="submit"]')
+        .isVisible()
+    ) {
+      fail(
+        '/kapsulirovanie/: Worker failure broke the Bitrix form UI.'
+      );
+    }
+
+    if (qdFailurePageErrors.length) {
+      fail(
+        '/kapsulirovanie/: Worker failure caused page errors: ' +
+        qdFailurePageErrors.join(' | ')
+      );
+    }
+  }
+
+  await qdFailurePage.close();
 
   const deniedPage = await browser.newPage({ viewport: { width: 1366, height: 900 } });
 
