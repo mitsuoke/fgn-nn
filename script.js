@@ -80,6 +80,11 @@ if ('IntersectionObserver' in window) {
 const METRIKA_ID = 111744945;
 const ANALYTICS_CONSENT_KEY = 'fgn_analytics_consent';
 const ANALYTICS_CONSENT_TTL = 365 * 24 * 60 * 60 * 1000;
+const QD_ANALYTICS_STORAGE_KEYS = Object.freeze([
+  'fgn_qd_identity_v1',
+  'fgn_qd_pending_v1',
+  'fgn_qd_completed_v1',
+]);
 let metrikaLoading = false;
 
 const reachGoal = (goal) => {
@@ -119,12 +124,18 @@ const readAnalyticsChoice = () => {
     const choice = JSON.parse(stored);
     if (!['granted', 'denied'].includes(choice.status) || !Number.isFinite(choice.expiresAt) || choice.expiresAt <= Date.now()) {
       localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+      QD_ANALYTICS_STORAGE_KEYS.forEach((key) =>
+        localStorage.removeItem(key)
+      );
       return null;
     }
     return choice.status;
   } catch (error) {
     try {
       localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+      QD_ANALYTICS_STORAGE_KEYS.forEach((key) =>
+        localStorage.removeItem(key)
+      );
     } catch (storageError) {
       // Storage is unavailable; the visitor will be asked again next time.
     }
@@ -164,7 +175,12 @@ const clearMetrikaStorage = () => {
     }
   });
   try {
-    Object.keys(localStorage).filter((key) => key.startsWith('_ym')).forEach((key) => localStorage.removeItem(key));
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('_ym'))
+      .forEach((key) => localStorage.removeItem(key));
+    QD_ANALYTICS_STORAGE_KEYS.forEach((key) =>
+      localStorage.removeItem(key)
+    );
   } catch (error) {
     // First-party analytics storage may be unavailable or already empty.
   }
