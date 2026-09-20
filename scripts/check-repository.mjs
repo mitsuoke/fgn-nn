@@ -246,7 +246,7 @@ if (shortFormFrames.size !== 1) {
 const isolatedFormHtml = read('forms/bitrix.html');
 const isolatedFormScript = read('forms/bitrix-embed.js');
 
-if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=3"')) {
+if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=4"')) {
   fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
 }
 
@@ -275,6 +275,18 @@ for (const source of [
   }
 }
 
+const isolatedConnectSrc =
+  isolatedCsp.match(/connect-src\s+([^;]+)/)?.[1] || '';
+
+for (const source of [
+  'https://b24-ud1314.bitrix24.ru',
+  'https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
+]) {
+  if (!isolatedConnectSrc.split(/\s+/).includes(source)) {
+    fail(`forms/bitrix.html: connect-src не содержит ${source}.`);
+  }
+}
+
 if (/frame-ancestors/.test(isolatedCsp)) {
   fail('forms/bitrix.html: frame-ancestors нельзя задавать через meta CSP.');
 }
@@ -293,10 +305,36 @@ for (const required of [
   'fgn-bitrix-success',
   'b24:form:send:success',
   '.b24-form-state.b24-form-success',
-  'parent.postMessage'
+  'parent.postMessage',
+  'FIRST_MEANINGFUL_FORM_INPUT',
+  'PROVISIONAL_FIRST_PARTY_BROWSER_IDENTITY',
+  'property:fgn-public-site',
+  'fgn:web-commercial-form-to-crm-cohort:v1',
+  'site:fgn-form-start:v1',
+  'PUBLIC_CLIENT_UNAUTHENTICATED',
+  'canonicalQualifiedDemandAllowed',
+  'fgn_qd_identity_v1',
+  'fgn_qd_pending_v1',
+  'fgn_qd_completed_v1',
+  "credentials: 'omit'",
+  "referrerPolicy: 'no-referrer'",
+  "'checkbox'"
 ]) {
   if (!isolatedFormScript.includes(required)) {
     fail(`forms/bitrix-embed.js: отсутствует обязательный фрагмент ${required}.`);
+  }
+}
+
+for (const forbidden of [
+  'fieldName',
+  'fieldValue',
+  'contactEmail',
+  'contactPhone'
+]) {
+  if (isolatedFormScript.includes(forbidden)) {
+    fail(
+      `forms/bitrix-embed.js: QD telemetry не должна содержать ${forbidden}.`
+    );
   }
 }
 
@@ -306,6 +344,17 @@ for (const file of htmlFiles) {
     read(file).includes("'unsafe-eval'")
   ) {
     fail(`${file}: unsafe-eval разрешён вне изолированной CRM-страницы.`);
+  }
+
+  if (
+    file !== 'forms/bitrix.html' &&
+    read(file).includes(
+      'fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
+    )
+  ) {
+    fail(
+      `${file}: QD Worker должен быть разрешён только в изолированной CRM-странице.`
+    );
   }
 }
 
@@ -412,7 +461,13 @@ for (const product of active) {
 }
 if (!sitemap.includes(`<loc>https://fgn-nn.ru/products/</loc><lastmod>${productData.updated}</lastmod>`)) fail('sitemap.xml: дата каталога не совпадает с products.json.');
 
-for (const file of ['script.js', 'shop.js', 'product-detail.js', 'commercial-pages.js']) {
+for (const file of [
+  'script.js',
+  'shop.js',
+  'product-detail.js',
+  'commercial-pages.js',
+  'forms/bitrix-embed.js'
+]) {
   try { execFileSync(process.execPath, ['--check', path.join(root, file)], { stdio: 'pipe' }); }
   catch { fail(`${file}: синтаксическая ошибка JavaScript.`); }
 }
