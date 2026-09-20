@@ -318,7 +318,8 @@ for (const required of [
   'fgn_qd_completed_v1',
   "credentials: 'omit'",
   "referrerPolicy: 'no-referrer'",
-  "'checkbox'"
+  "'checkbox'",
+  '.b24-form-control-agreement'
 ]) {
   if (!isolatedFormScript.includes(required)) {
     fail(`forms/bitrix-embed.js: отсутствует обязательный фрагмент ${required}.`);
