@@ -38,6 +38,24 @@ const mockExternalResources = (
     if (
       /^https:\/\/fgn-qd-ingress\.fgn-9c244031b99b\.workers\.dev\/v1\/qualified-demand\/form-start$/.test(url)
     ) {
+      const method = request.request().method();
+      const requestHeaders = request.request().headers();
+      const origin = requestHeaders.origin || '*';
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'no-store'
+      };
+
+      if (method === 'OPTIONS') {
+        return request.fulfill({
+          status: 204,
+          headers: corsHeaders,
+          body: ''
+        });
+      }
+
       let body = null;
 
       try {
@@ -49,14 +67,15 @@ const mockExternalResources = (
       if (onQualifiedDemand) {
         await onQualifiedDemand({
           body,
-          headers: request.request().headers(),
-          method: request.request().method()
+          headers: requestHeaders,
+          method
         });
       }
 
       return request.fulfill({
         status: qualifiedDemandHttpStatus,
         contentType: 'application/json',
+        headers: corsHeaders,
         body: JSON.stringify(
           qualifiedDemandHttpStatus >= 200 &&
           qualifiedDemandHttpStatus < 300
