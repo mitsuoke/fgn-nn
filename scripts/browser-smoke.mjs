@@ -371,9 +371,69 @@ try {
     await page.close();
   }
 
+  const qdNoConsentRequests = [];
+  const qdNoConsentPage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+
+  await mockExternalResources(qdNoConsentPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: ({ body, headers, method }) => {
+      qdNoConsentRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdNoConsentPage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  const qdNoConsentFrame = qdNoConsentPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=8')
+  );
+
+  if (!qdNoConsentFrame) {
+    fail('/: no-consent QD test could not find form 8 iframe.');
+  } else {
+    await qdNoConsentFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('no-consent');
+
+    await qdNoConsentPage.waitForTimeout(100);
+
+    if (qdNoConsentRequests.length !== 0) {
+      fail('/: QD emitted without analytics consent.');
+    }
+
+    const qdStorage = await qdNoConsentFrame.evaluate(() => ({
+      identity: localStorage.getItem('fgn_qd_identity_v1'),
+      pending: localStorage.getItem('fgn_qd_pending_v1'),
+      completed: localStorage.getItem('fgn_qd_completed_v1')
+    }));
+
+    if (
+      qdStorage.identity !== null ||
+      qdStorage.pending !== null ||
+      qdStorage.completed !== null
+    ) {
+      fail('/: QD localStorage was created without analytics consent.');
+    }
+  }
+
+  await qdNoConsentPage.close();
+
   const qualifiedDemandRequests = [];
   const qdContext = await browser.newContext({
     viewport: { width: 1366, height: 900 }
+  });
+
+  await qdContext.addInitScript(() => {
+    try {
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: Date.now(),
+        expiresAt: Date.now() + 60 * 60 * 1000
+      }));
+    } catch {}
   });
 
   const qdPage = await qdContext.newPage();
@@ -587,6 +647,16 @@ try {
   const qdFailureErrors = [];
   let qdFailureRequests = 0;
 
+  await qdFailurePage.addInitScript(() => {
+    try {
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: Date.now(),
+        expiresAt: Date.now() + 60 * 60 * 1000
+      }));
+    } catch {}
+  });
+
   qdFailurePage.on(
     'pageerror',
     (error) => qdFailureErrors.push(error.message)
@@ -651,6 +721,73 @@ try {
   }
 
   await qdFailurePage.close();
+
+  const qdWithdrawPage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+
+  await qdWithdrawPage.addInitScript(() => {
+    try {
+      const now = Date.now();
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: now,
+        expiresAt: now + 60 * 60 * 1000
+      }));
+      localStorage.setItem(
+        'fgn_qd_identity_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000001'
+      );
+      localStorage.setItem(
+        'fgn_qd_pending_v1',
+        '{"synthetic":true}'
+      );
+      localStorage.setItem(
+        'fgn_qd_completed_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000001'
+      );
+    } catch {}
+  });
+
+  await mockExternalResources(qdWithdrawPage, {
+    useLiveBitrix: false
+  });
+
+  await qdWithdrawPage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  await qdWithdrawPage
+    .locator('[data-cookie-settings]')
+    .first()
+    .click();
+
+  await qdWithdrawPage
+    .locator('#cookie-analytics-decline')
+    .click();
+
+  const qdAfterWithdrawal = await qdWithdrawPage.evaluate(() => ({
+    consent: JSON.parse(
+      localStorage.getItem('fgn_analytics_consent') || 'null'
+    )?.status || null,
+    identity: localStorage.getItem('fgn_qd_identity_v1'),
+    pending: localStorage.getItem('fgn_qd_pending_v1'),
+    completed: localStorage.getItem('fgn_qd_completed_v1')
+  }));
+
+  if (qdAfterWithdrawal.consent !== 'denied') {
+    fail('/: analytics consent withdrawal did not persist denied status.');
+  }
+
+  if (
+    qdAfterWithdrawal.identity !== null ||
+    qdAfterWithdrawal.pending !== null ||
+    qdAfterWithdrawal.completed !== null
+  ) {
+    fail('/: QD analytics storage survived consent withdrawal.');
+  }
+
+  await qdWithdrawPage.close();
 
   const bitrixGoalCases = [
     ['/', '8', 'B24_FORM_8_END', 'event'],
