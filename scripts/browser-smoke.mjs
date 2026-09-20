@@ -28,12 +28,70 @@ const mockExternalResources = (
     useLiveBitrix = liveBitrix,
     onQualifiedDemand = null,
     qualifiedDemandHttpStatus = 201,
-    qualifiedDemandStatus = 'RECORDED'
+    qualifiedDemandStatus = 'RECORDED',
+    onQualifiedDemandRevoke = null,
+    qualifiedDemandRevokeHttpStatus = 200
   } = {}
 ) => page.route(
   /^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/,
   async (request) => {
     const url = request.request().url();
+
+    if (
+      /^https:\/\/fgn-qd-ingress\.fgn-9c244031b99b\.workers\.dev\/v1\/qualified-demand\/revoke$/.test(url)
+    ) {
+      const method = request.request().method();
+      const requestHeaders = request.request().headers();
+      const origin = requestHeaders.origin || '*';
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'no-store'
+      };
+
+      if (method === 'OPTIONS') {
+        return request.fulfill({
+          status: 204,
+          headers: corsHeaders,
+          body: ''
+        });
+      }
+
+      let body = null;
+
+      try {
+        body = JSON.parse(
+          request.request().postData() || 'null'
+        );
+      } catch {}
+
+      if (onQualifiedDemandRevoke) {
+        await onQualifiedDemandRevoke({
+          body,
+          headers: requestHeaders,
+          method
+        });
+      }
+
+      return request.fulfill({
+        status: qualifiedDemandRevokeHttpStatus,
+        contentType: 'application/json',
+        headers: corsHeaders,
+        body: JSON.stringify(
+          qualifiedDemandRevokeHttpStatus >= 200 &&
+          qualifiedDemandRevokeHttpStatus < 300
+            ? {
+                status: 'ERASURE_ACCEPTED',
+                trustState: 'PUBLIC_CLIENT_UNAUTHENTICATED',
+                canonicalQualifiedDemandAllowed: false
+              }
+            : {
+                error: 'SYNTHETIC_FAILURE'
+              }
+        )
+      });
+    }
 
     if (
       /^https:\/\/fgn-qd-ingress\.fgn-9c244031b99b\.workers\.dev\/v1\/qualified-demand\/form-start$/.test(url)
@@ -782,11 +840,15 @@ try {
   });
 
   let qdWithdrawRequests = 0;
+  const qdRevokeRequests = [];
 
   await mockExternalResources(qdWithdrawPage, {
     useLiveBitrix: false,
     onQualifiedDemand: () => {
       qdWithdrawRequests += 1;
+    },
+    onQualifiedDemandRevoke: ({ body, headers, method }) => {
+      qdRevokeRequests.push({ body, headers, method });
     }
   });
 
@@ -802,6 +864,53 @@ try {
   await qdWithdrawPage
     .locator('#cookie-analytics-decline')
     .click();
+
+  for (
+    let attempt = 0;
+    attempt < 40 &&
+    qdRevokeRequests.length === 0;
+    attempt += 1
+  ) {
+    await qdWithdrawPage.waitForTimeout(50);
+  }
+
+  if (qdRevokeRequests.length !== 1) {
+    fail(
+      `/: analytics withdrawal emitted ${qdRevokeRequests.length} revoke requests instead of 1.`
+    );
+  } else {
+    const request = qdRevokeRequests[0];
+    const payload = request.body || {};
+    const exactKeys = [
+      'schemaVersion',
+      'identityRef',
+      'cohortRef'
+    ].sort();
+
+    if (
+      JSON.stringify(Object.keys(payload).sort()) !==
+      JSON.stringify(exactKeys)
+    ) {
+      fail('/: QD revoke payload does not have the exact strict keys.');
+    }
+
+    if (
+      payload.schemaVersion !== '1.0.0' ||
+      payload.identityRef !==
+        'fgnqd_id_00000000-0000-4000-8000-000000000001' ||
+      payload.cohortRef !==
+        'fgn:web-commercial-form-to-crm-cohort:v1'
+    ) {
+      fail('/: QD revoke payload coordinates are incorrect.');
+    }
+
+    if (
+      request.method !== 'POST' ||
+      request.headers['content-type'] !== 'application/json'
+    ) {
+      fail('/: QD revoke transport contract is incorrect.');
+    }
+  }
 
   const qdAfterWithdrawal = await qdWithdrawPage.evaluate(() => ({
     consent: JSON.parse(
@@ -858,6 +967,135 @@ try {
   }
 
   await qdWithdrawPage.close();
+
+  const qdInitialDeclinePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  let qdInitialDeclineRevokes = 0;
+
+  await mockExternalResources(qdInitialDeclinePage, {
+    useLiveBitrix: false,
+    onQualifiedDemandRevoke: () => {
+      qdInitialDeclineRevokes += 1;
+    }
+  });
+
+  await qdInitialDeclinePage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  await qdInitialDeclinePage
+    .locator('#cookie-analytics-decline')
+    .click();
+  await qdInitialDeclinePage.waitForTimeout(150);
+
+  if (qdInitialDeclineRevokes !== 0) {
+    fail('/: initial analytics denial emitted revoke without a QD identity.');
+  }
+
+  const initialDeclineBridgeCount =
+    await qdInitialDeclinePage
+      .locator('iframe[data-qd-revoke-bridge]')
+      .count();
+
+  if (initialDeclineBridgeCount !== 0) {
+    fail('/: initial analytics denial created an unnecessary revoke bridge.');
+  }
+
+  await qdInitialDeclinePage.close();
+
+  const qdRevokeFailurePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  const qdFailedRevokes = [];
+  const qdRevokeFailureErrors = [];
+
+  await qdRevokeFailurePage.addInitScript(() => {
+    try {
+      const now = Date.now();
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: now,
+        expiresAt: now + 60 * 60 * 1000
+      }));
+      localStorage.setItem(
+        'fgn_qd_identity_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000002'
+      );
+      localStorage.setItem(
+        'fgn_qd_completed_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000002'
+      );
+    } catch {}
+  });
+
+  qdRevokeFailurePage.on(
+    'pageerror',
+    (error) => qdRevokeFailureErrors.push(error.message)
+  );
+
+  await mockExternalResources(qdRevokeFailurePage, {
+    useLiveBitrix: false,
+    qualifiedDemandRevokeHttpStatus: 503,
+    onQualifiedDemandRevoke: ({ body }) => {
+      qdFailedRevokes.push(body);
+    }
+  });
+
+  await qdRevokeFailurePage.goto(`${baseUrl}/products/`, {
+    waitUntil: 'networkidle'
+  });
+
+  await qdRevokeFailurePage
+    .locator('[data-cookie-settings]')
+    .first()
+    .click();
+  await qdRevokeFailurePage
+    .locator('#cookie-analytics-decline')
+    .click();
+
+  for (
+    let attempt = 0;
+    attempt < 50 &&
+    qdFailedRevokes.length < 3;
+    attempt += 1
+  ) {
+    await qdRevokeFailurePage.waitForTimeout(50);
+  }
+
+  if (qdFailedRevokes.length !== 3) {
+    fail(
+      `/products/: failed revoke attempted ${qdFailedRevokes.length} times instead of bounded 3.`
+    );
+  }
+
+  const qdAfterFailedRevoke =
+    await qdRevokeFailurePage.evaluate(() => ({
+      consent: JSON.parse(
+        localStorage.getItem('fgn_analytics_consent') || 'null'
+      )?.status || null,
+      identity: localStorage.getItem('fgn_qd_identity_v1'),
+      pending: localStorage.getItem('fgn_qd_pending_v1'),
+      completed: localStorage.getItem('fgn_qd_completed_v1')
+    }));
+
+  if (
+    qdAfterFailedRevoke.consent !== 'denied' ||
+    qdAfterFailedRevoke.identity !== null ||
+    qdAfterFailedRevoke.pending !== null ||
+    qdAfterFailedRevoke.completed !== null
+  ) {
+    fail('/products/: failed revoke blocked immediate local consent cleanup.');
+  }
+
+  if (qdRevokeFailureErrors.length) {
+    fail(
+      '/products/: failed revoke surfaced page errors: ' +
+      qdRevokeFailureErrors.join(' | ')
+    );
+  }
+
+  await qdRevokeFailurePage.close();
 
   const bitrixGoalCases = [
     ['/', '8', 'B24_FORM_8_END', 'event'],
