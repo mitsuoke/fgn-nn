@@ -368,14 +368,30 @@ for (const file of htmlFiles) {
   }
 
   if (
-    file !== 'forms/bitrix.html' &&
+    !['forms/bitrix.html', 'forms/qd-revoke.html'].includes(file) &&
     html.includes(
       'fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
     )
   ) {
     fail(
-      `${file}: QD Worker должен быть разрешён только в изолированной CRM-странице.`
+      `${file}: QD Worker разрешён только в изолированных служебных страницах.`
     );
+  }
+
+  if (html.includes('id="cookie-notice"')) {
+    const pageCsp = metaContent(
+      html,
+      'http-equiv',
+      'Content-Security-Policy'
+    );
+    const pageFrameSrc =
+      pageCsp.match(/frame-src\s+([^;]+)/)?.[1] || '';
+
+    if (!pageFrameSrc.split(/\s+/).includes("'self'")) {
+      fail(
+        `${file}: frame-src должен разрешать same-origin QD revoke bridge.`
+      );
+    }
   }
 }
 
@@ -385,10 +401,74 @@ for (const required of [
   'собственное first-party измерение начала заполнения коммерческой формы',
   'First-party идентификаторы Qualified Demand создаются и сохраняются только при действующем разрешении аналитики',
   'Cloudflare Workers и Cloudflare D1',
-  'юрисдикции Европейского союза'
+  'юрисдикции Европейского союза',
+  'не более 365 дней с момента приёма сервером',
+  'технической политикой хранения FGN',
+  'не является аутентифицированным удалением пользовательского аккаунта',
+  'локальный отказ всё равно действует немедленно',
+  'Редакция от 20 сентября 2026 года'
 ]) {
   if (!privacyHtml.includes(required)) {
     fail(`privacy.html: отсутствует EU/QD disclosure: ${required}.`);
+  }
+}
+
+const qdRevokeHtml = read('forms/qd-revoke.html');
+const qdRevokeScript = read('forms/qd-revoke.js');
+
+const qdRevokeCsp = metaContent(
+  qdRevokeHtml,
+  'http-equiv',
+  'Content-Security-Policy'
+);
+
+for (const required of [
+  "default-src 'none'",
+  "script-src 'self'",
+  'connect-src https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev',
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'"
+]) {
+  if (!qdRevokeCsp.includes(required)) {
+    fail(`forms/qd-revoke.html: отсутствует узкий CSP-фрагмент ${required}.`);
+  }
+}
+
+if (!qdRevokeHtml.includes(
+  '<meta name="robots" content="noindex,nofollow">'
+)) {
+  fail('forms/qd-revoke.html: служебная страница должна быть noindex,nofollow.');
+}
+
+for (const required of [
+  '/v1/qualified-demand/revoke',
+  'QD_REVOKE_MAX_ATTEMPTS = 3',
+  'QD_REVOKE_ATTEMPT_TIMEOUT_MS = 3000',
+  "credentials: 'omit'",
+  "referrerPolicy: 'no-referrer'",
+  'ERASURE_ACCEPTED',
+  'PUBLIC_CLIENT_UNAUTHENTICATED',
+  'canonicalQualifiedDemandAllowed === false',
+  'parent.postMessage',
+  'fgn-qd-revoke-ready',
+  'fgn-qd-revoke-complete'
+]) {
+  if (!qdRevokeScript.includes(required)) {
+    fail(`forms/qd-revoke.js: отсутствует обязательный revoke-фрагмент ${required}.`);
+  }
+}
+
+for (const forbidden of [
+  'contactEmail',
+  'contactPhone',
+  'fieldValue',
+  'freeText'
+]) {
+  if (qdRevokeScript.includes(forbidden)) {
+    fail(
+      `forms/qd-revoke.js: revoke transport не должен содержать ${forbidden}.`
+    );
   }
 }
 
@@ -396,10 +476,16 @@ const commonScript = read('script.js');
 
 for (const required of [
   'QD_ANALYTICS_STORAGE_KEYS',
+  'QD_IDENTITY_STORAGE_KEY',
   'fgn_qd_identity_v1',
   'fgn_qd_pending_v1',
   'fgn_qd_completed_v1',
   'clearMetrikaStorage',
+  '/forms/qd-revoke.html',
+  'readQualifiedDemandIdentity',
+  'postQualifiedDemandRevoke',
+  'fgn-qd-revoke-ready',
+  'fgn-qd-revoke',
   'fgn-bitrix-height',
   'fgn-bitrix-success',
   'B24_FORM_8_END',
