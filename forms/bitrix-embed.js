@@ -33,6 +33,7 @@ const QD_SOURCE_REVISION = 'site:fgn-form-start:v1';
 const QD_IDENTITY_STORAGE_KEY = 'fgn_qd_identity_v1';
 const QD_PENDING_STORAGE_KEY = 'fgn_qd_pending_v1';
 const QD_COMPLETED_STORAGE_KEY = 'fgn_qd_completed_v1';
+const QD_ANALYTICS_CONSENT_KEY = 'fgn_analytics_consent';
 
 const QD_ROUTE_REFS = Object.freeze({
   '/': 'route:home',
@@ -115,6 +116,38 @@ const removeStorage = (key) => {
     localStorage.removeItem(key);
   } catch {
     // Telemetry storage is optional; form UX must remain unaffected.
+  }
+};
+
+const clearQualifiedDemandStorage = () => {
+  [
+    QD_IDENTITY_STORAGE_KEY,
+    QD_PENDING_STORAGE_KEY,
+    QD_COMPLETED_STORAGE_KEY
+  ].forEach(removeStorage);
+};
+
+const hasQualifiedDemandAnalyticsConsent = () => {
+  const raw = readStorage(QD_ANALYTICS_CONSENT_KEY);
+
+  if (!raw) {
+    clearQualifiedDemandStorage();
+    return false;
+  }
+
+  try {
+    const choice = JSON.parse(raw);
+    const allowed =
+      choice?.status === 'granted' &&
+      Number.isFinite(choice?.expiresAt) &&
+      choice.expiresAt > Date.now();
+
+    if (!allowed) clearQualifiedDemandStorage();
+
+    return allowed;
+  } catch {
+    clearQualifiedDemandStorage();
+    return false;
   }
 };
 
@@ -277,6 +310,7 @@ let qualifiedDemandRequestInFlight = false;
 
 const emitQualifiedDemandFormStart = async () => {
   if (qualifiedDemandRequestInFlight) return;
+  if (!hasQualifiedDemandAnalyticsConsent()) return;
 
   const routeRef = resolveRouteRef();
   if (!routeRef) return;
