@@ -80,7 +80,19 @@ if ('IntersectionObserver' in window) {
 const METRIKA_ID = 111744945;
 const ANALYTICS_CONSENT_KEY = 'fgn_analytics_consent';
 const ANALYTICS_CONSENT_TTL = 365 * 24 * 60 * 60 * 1000;
+const QD_IDENTITY_STORAGE_KEY = 'fgn_qd_identity_v1';
+const QD_ANALYTICS_STORAGE_KEYS = Object.freeze([
+  QD_IDENTITY_STORAGE_KEY,
+  'fgn_qd_pending_v1',
+  'fgn_qd_completed_v1',
+]);
+const QD_REVOKE_BRIDGE_PATH = '/forms/qd-revoke.html';
+const QD_IDENTITY_ID_PATTERN =
+  /^fgnqd_id_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 let metrikaLoading = false;
+let qdRevokeBridge = null;
+let qdRevokeBridgeReady = false;
+let pendingQdRevokeIdentity = null;
 
 const reachGoal = (goal) => {
   if (
@@ -119,12 +131,18 @@ const readAnalyticsChoice = () => {
     const choice = JSON.parse(stored);
     if (!['granted', 'denied'].includes(choice.status) || !Number.isFinite(choice.expiresAt) || choice.expiresAt <= Date.now()) {
       localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+      QD_ANALYTICS_STORAGE_KEYS.forEach((key) =>
+        localStorage.removeItem(key)
+      );
       return null;
     }
     return choice.status;
   } catch (error) {
     try {
       localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+      QD_ANALYTICS_STORAGE_KEYS.forEach((key) =>
+        localStorage.removeItem(key)
+      );
     } catch (storageError) {
       // Storage is unavailable; the visitor will be asked again next time.
     }
@@ -156,6 +174,91 @@ const hideCookieNotice = () => {
 
 if (analyticsConsent !== 'granted' && analyticsConsent !== 'denied') showCookieNotice();
 
+const readQualifiedDemandIdentity = () => {
+  try {
+    const identityRef = localStorage.getItem(
+      QD_IDENTITY_STORAGE_KEY
+    );
+    return QD_IDENTITY_ID_PATTERN.test(identityRef || '')
+      ? identityRef
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const ensureQualifiedDemandRevokeBridge = () => {
+  if (qdRevokeBridge?.isConnected) {
+    return qdRevokeBridge;
+  }
+
+  const frame = document.createElement('iframe');
+  frame.src = QD_REVOKE_BRIDGE_PATH;
+  frame.hidden = true;
+  frame.tabIndex = -1;
+  frame.setAttribute('aria-hidden', 'true');
+  frame.setAttribute('title', 'FGN analytics erasure bridge');
+  frame.dataset.qdRevokeBridge = '';
+  document.body.appendChild(frame);
+
+  qdRevokeBridge = frame;
+  qdRevokeBridgeReady = false;
+
+  return frame;
+};
+
+const postQualifiedDemandRevoke = (identityRef) => {
+  const frame = ensureQualifiedDemandRevokeBridge();
+
+  if (!qdRevokeBridgeReady) {
+    pendingQdRevokeIdentity = identityRef;
+    return;
+  }
+
+  pendingQdRevokeIdentity = null;
+
+  try {
+    frame.contentWindow?.postMessage({
+      type: 'fgn-qd-revoke',
+      identityRef
+    }, window.location.origin);
+  } catch {
+    // Revocation is best-effort and must never affect site UX.
+  }
+};
+
+window.addEventListener('message', (event) => {
+  if (
+    event.origin !== window.location.origin ||
+    !qdRevokeBridge ||
+    event.source !== qdRevokeBridge.contentWindow
+  ) {
+    return;
+  }
+
+  const data = event.data;
+
+  if (!data || typeof data !== 'object') {
+    return;
+  }
+
+  if (data.type === 'fgn-qd-revoke-ready') {
+    qdRevokeBridgeReady = true;
+
+    if (pendingQdRevokeIdentity) {
+      postQualifiedDemandRevoke(
+        pendingQdRevokeIdentity
+      );
+    }
+
+    return;
+  }
+
+  if (data.type === 'fgn-qd-revoke-complete') {
+    pendingQdRevokeIdentity = null;
+  }
+});
+
 const clearMetrikaStorage = () => {
   document.cookie.split(';').forEach((part) => {
     const name = part.split('=')[0].trim();
@@ -164,7 +267,12 @@ const clearMetrikaStorage = () => {
     }
   });
   try {
-    Object.keys(localStorage).filter((key) => key.startsWith('_ym')).forEach((key) => localStorage.removeItem(key));
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('_ym'))
+      .forEach((key) => localStorage.removeItem(key));
+    QD_ANALYTICS_STORAGE_KEYS.forEach((key) =>
+      localStorage.removeItem(key)
+    );
   } catch (error) {
     // First-party analytics storage may be unavailable or already empty.
   }
@@ -203,8 +311,14 @@ analyticsAccept?.addEventListener('click', () => {
 });
 
 analyticsDecline?.addEventListener('click', () => {
+  const qdIdentityRef = readQualifiedDemandIdentity();
+
   saveAnalyticsChoice('denied');
   stopMetrika();
+
+  if (qdIdentityRef) {
+    postQualifiedDemandRevoke(qdIdentityRef);
+  }
 });
 
 cookieSettingsButtons.forEach((button) => button.addEventListener('click', showCookieNotice));

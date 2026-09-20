@@ -246,7 +246,7 @@ if (shortFormFrames.size !== 1) {
 const isolatedFormHtml = read('forms/bitrix.html');
 const isolatedFormScript = read('forms/bitrix-embed.js');
 
-if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=3"')) {
+if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=4"')) {
   fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
 }
 
@@ -275,6 +275,18 @@ for (const source of [
   }
 }
 
+const isolatedConnectSrc =
+  isolatedCsp.match(/connect-src\s+([^;]+)/)?.[1] || '';
+
+for (const source of [
+  'https://b24-ud1314.bitrix24.ru',
+  'https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
+]) {
+  if (!isolatedConnectSrc.split(/\s+/).includes(source)) {
+    fail(`forms/bitrix.html: connect-src не содержит ${source}.`);
+  }
+}
+
 if (/frame-ancestors/.test(isolatedCsp)) {
   fail('forms/bitrix.html: frame-ancestors нельзя задавать через meta CSP.');
 }
@@ -293,25 +305,187 @@ for (const required of [
   'fgn-bitrix-success',
   'b24:form:send:success',
   '.b24-form-state.b24-form-success',
-  'parent.postMessage'
+  'parent.postMessage',
+  'FIRST_MEANINGFUL_FORM_INPUT',
+  'PROVISIONAL_FIRST_PARTY_BROWSER_IDENTITY',
+  'property:fgn-public-site',
+  'fgn:web-commercial-form-to-crm-cohort:v1',
+  'site:fgn-form-start:v1',
+  'PUBLIC_CLIENT_UNAUTHENTICATED',
+  'canonicalQualifiedDemandAllowed',
+  'fgn_qd_identity_v1',
+  'fgn_qd_pending_v1',
+  'fgn_qd_completed_v1',
+  'fgn_analytics_consent',
+  'hasQualifiedDemandAnalyticsConsent',
+  'clearQualifiedDemandStorage',
+  'meaningfulInputObservedWithoutConsent',
+  "credentials: 'omit'",
+  "referrerPolicy: 'no-referrer'",
+  "'checkbox'",
+  '.b24-form-control-agreement'
 ]) {
   if (!isolatedFormScript.includes(required)) {
     fail(`forms/bitrix-embed.js: отсутствует обязательный фрагмент ${required}.`);
   }
 }
 
+for (const forbidden of [
+  'fieldName',
+  'fieldValue',
+  'contactEmail',
+  'contactPhone'
+]) {
+  if (isolatedFormScript.includes(forbidden)) {
+    fail(
+      `forms/bitrix-embed.js: QD telemetry не должна содержать ${forbidden}.`
+    );
+  }
+}
+
 for (const file of htmlFiles) {
+  const html = read(file);
+
+  if (html.includes('id="cookie-notice"')) {
+    if (!html.includes(
+      'собственное измерение начала заполнения коммерческой формы'
+    )) {
+      fail(`${file}: consent banner не описывает first-party QD аналитику.`);
+    }
+
+    if (html.includes(
+      'С вашего разрешения мы используем Яндекс Метрику, чтобы понимать, как улучшать сайт.'
+    )) {
+      fail(`${file}: осталась устаревшая формулировка consent banner только про Метрику.`);
+    }
+  }
+
   if (
     file !== 'forms/bitrix.html' &&
-    read(file).includes("'unsafe-eval'")
+    html.includes("'unsafe-eval'")
   ) {
     fail(`${file}: unsafe-eval разрешён вне изолированной CRM-страницы.`);
+  }
+
+  if (
+    !['forms/bitrix.html', 'forms/qd-revoke.html'].includes(file) &&
+    html.includes(
+      'fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
+    )
+  ) {
+    fail(
+      `${file}: QD Worker разрешён только в изолированных служебных страницах.`
+    );
+  }
+
+  if (html.includes('id="cookie-notice"')) {
+    const pageCsp = metaContent(
+      html,
+      'http-equiv',
+      'Content-Security-Policy'
+    );
+    const pageFrameSrc =
+      pageCsp.match(/frame-src\s+([^;]+)/)?.[1] || '';
+
+    if (!pageFrameSrc.split(/\s+/).includes("'self'")) {
+      fail(
+        `${file}: frame-src должен разрешать same-origin QD revoke bridge.`
+      );
+    }
+  }
+}
+
+const privacyHtml = read('privacy.html');
+
+for (const required of [
+  'собственное first-party измерение начала заполнения коммерческой формы',
+  'First-party идентификаторы Qualified Demand создаются и сохраняются только при действующем разрешении аналитики',
+  'Cloudflare Workers и Cloudflare D1',
+  'юрисдикции Европейского союза',
+  'не более 365 дней с момента приёма сервером',
+  'технической политикой хранения FGN',
+  'не является аутентифицированным удалением пользовательского аккаунта',
+  'локальный отказ всё равно действует немедленно',
+  'Редакция от 20 сентября 2026 года'
+]) {
+  if (!privacyHtml.includes(required)) {
+    fail(`privacy.html: отсутствует EU/QD disclosure: ${required}.`);
+  }
+}
+
+const qdRevokeHtml = read('forms/qd-revoke.html');
+const qdRevokeScript = read('forms/qd-revoke.js');
+
+const qdRevokeCsp = metaContent(
+  qdRevokeHtml,
+  'http-equiv',
+  'Content-Security-Policy'
+);
+
+for (const required of [
+  "default-src 'none'",
+  "script-src 'self'",
+  'connect-src https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev',
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'"
+]) {
+  if (!qdRevokeCsp.includes(required)) {
+    fail(`forms/qd-revoke.html: отсутствует узкий CSP-фрагмент ${required}.`);
+  }
+}
+
+if (!qdRevokeHtml.includes(
+  '<meta name="robots" content="noindex,nofollow">'
+)) {
+  fail('forms/qd-revoke.html: служебная страница должна быть noindex,nofollow.');
+}
+
+for (const required of [
+  '/v1/qualified-demand/revoke',
+  'QD_REVOKE_MAX_ATTEMPTS = 3',
+  'QD_REVOKE_ATTEMPT_TIMEOUT_MS = 3000',
+  "credentials: 'omit'",
+  "referrerPolicy: 'no-referrer'",
+  'ERASURE_ACCEPTED',
+  'PUBLIC_CLIENT_UNAUTHENTICATED',
+  'canonicalQualifiedDemandAllowed === false',
+  'parent.postMessage',
+  'fgn-qd-revoke-ready',
+  'fgn-qd-revoke-complete'
+]) {
+  if (!qdRevokeScript.includes(required)) {
+    fail(`forms/qd-revoke.js: отсутствует обязательный revoke-фрагмент ${required}.`);
+  }
+}
+
+for (const forbidden of [
+  'contactEmail',
+  'contactPhone',
+  'fieldValue',
+  'freeText'
+]) {
+  if (qdRevokeScript.includes(forbidden)) {
+    fail(
+      `forms/qd-revoke.js: revoke transport не должен содержать ${forbidden}.`
+    );
   }
 }
 
 const commonScript = read('script.js');
 
 for (const required of [
+  'QD_ANALYTICS_STORAGE_KEYS',
+  'QD_IDENTITY_STORAGE_KEY',
+  'fgn_qd_identity_v1',
+  'fgn_qd_pending_v1',
+  'fgn_qd_completed_v1',
+  'clearMetrikaStorage',
+  '/forms/qd-revoke.html',
+  'readQualifiedDemandIdentity',
+  'postQualifiedDemandRevoke',
+  'fgn-qd-revoke-ready',
+  'fgn-qd-revoke',
   'fgn-bitrix-height',
   'fgn-bitrix-success',
   'B24_FORM_8_END',
@@ -400,8 +574,8 @@ for (const file of [
   'upakovka-i-markirovka-bad/index.html',
   'kontraktnoe-proizvodstvo-bad/index.html'
 ]) {
-  if (!read(file).includes('script.js?v=12')) {
-    fail(`${file}: страница с CRM-формой должна подключать script.js?v=12.`);
+  if (!read(file).includes('script.js?v=13')) {
+    fail(`${file}: страница с CRM-формой должна подключать script.js?v=13.`);
   }
 }
 
@@ -412,7 +586,13 @@ for (const product of active) {
 }
 if (!sitemap.includes(`<loc>https://fgn-nn.ru/products/</loc><lastmod>${productData.updated}</lastmod>`)) fail('sitemap.xml: дата каталога не совпадает с products.json.');
 
-for (const file of ['script.js', 'shop.js', 'product-detail.js', 'commercial-pages.js']) {
+for (const file of [
+  'script.js',
+  'shop.js',
+  'product-detail.js',
+  'commercial-pages.js',
+  'forms/bitrix-embed.js'
+]) {
   try { execFileSync(process.execPath, ['--check', path.join(root, file)], { stdio: 'pipe' }); }
   catch { fail(`${file}: синтаксическая ошибка JavaScript.`); }
 }

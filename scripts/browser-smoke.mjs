@@ -22,19 +22,154 @@ const commercialRoutes = [
 ];
 const routes = ['/', '/products/', ...products.map((product) => `/products/${product.slug}/`), ...commercialRoutes];
 
-const mockExternalResources = (page, { useLiveBitrix = liveBitrix } = {}) => page.route(/^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/, (request) => {
-  if (useLiveBitrix && /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(request.request().url())) {
-    return request.continue();
+const mockExternalResources = (
+  page,
+  {
+    useLiveBitrix = liveBitrix,
+    onQualifiedDemand = null,
+    qualifiedDemandHttpStatus = 201,
+    qualifiedDemandStatus = 'RECORDED',
+    onQualifiedDemandRevoke = null,
+    qualifiedDemandRevokeHttpStatus = 200
+  } = {}
+) => page.route(
+  /^https?:\/\/(?!127\.0\.0\.1:4173|fgn-nn\.ru(?::4173)?\/)/,
+  async (request) => {
+    const url = request.request().url();
+
+    if (
+      /^https:\/\/fgn-qd-ingress\.fgn-9c244031b99b\.workers\.dev\/v1\/qualified-demand\/revoke$/.test(url)
+    ) {
+      const method = request.request().method();
+      const requestHeaders = request.request().headers();
+      const origin = requestHeaders.origin || '*';
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'no-store'
+      };
+
+      if (method === 'OPTIONS') {
+        return request.fulfill({
+          status: 204,
+          headers: corsHeaders,
+          body: ''
+        });
+      }
+
+      let body = null;
+
+      try {
+        body = JSON.parse(
+          request.request().postData() || 'null'
+        );
+      } catch {}
+
+      if (onQualifiedDemandRevoke) {
+        await onQualifiedDemandRevoke({
+          body,
+          headers: requestHeaders,
+          method
+        });
+      }
+
+      return request.fulfill({
+        status: qualifiedDemandRevokeHttpStatus,
+        contentType: 'application/json',
+        headers: corsHeaders,
+        body: JSON.stringify(
+          qualifiedDemandRevokeHttpStatus >= 200 &&
+          qualifiedDemandRevokeHttpStatus < 300
+            ? {
+                status: 'ERASURE_ACCEPTED',
+                trustState: 'PUBLIC_CLIENT_UNAUTHENTICATED',
+                canonicalQualifiedDemandAllowed: false
+              }
+            : {
+                error: 'SYNTHETIC_FAILURE'
+              }
+        )
+      });
+    }
+
+    if (
+      /^https:\/\/fgn-qd-ingress\.fgn-9c244031b99b\.workers\.dev\/v1\/qualified-demand\/form-start$/.test(url)
+    ) {
+      const method = request.request().method();
+      const requestHeaders = request.request().headers();
+      const origin = requestHeaders.origin || '*';
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'no-store'
+      };
+
+      if (method === 'OPTIONS') {
+        return request.fulfill({
+          status: 204,
+          headers: corsHeaders,
+          body: ''
+        });
+      }
+
+      let body = null;
+
+      try {
+        body = JSON.parse(
+          request.request().postData() || 'null'
+        );
+      } catch {}
+
+      if (onQualifiedDemand) {
+        await onQualifiedDemand({
+          body,
+          headers: requestHeaders,
+          method
+        });
+      }
+
+      return request.fulfill({
+        status: qualifiedDemandHttpStatus,
+        contentType: 'application/json',
+        headers: corsHeaders,
+        body: JSON.stringify(
+          qualifiedDemandHttpStatus >= 200 &&
+          qualifiedDemandHttpStatus < 300
+            ? {
+                status: qualifiedDemandStatus,
+                eventId: body?.eventId || null,
+                trustState: 'PUBLIC_CLIENT_UNAUTHENTICATED',
+                canonicalQualifiedDemandAllowed: false
+              }
+            : {
+                error: 'SYNTHETIC_FAILURE'
+              }
+        )
+      });
+    }
+
+    if (
+      useLiveBitrix &&
+      /^https:\/\/(?:cdn-ru\.bitrix24\.ru|b24-ud1314\.bitrix24\.ru)\//.test(url)
+    ) {
+      return request.continue();
+    }
+
+    if (
+      /cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(url)
+    ) {
+      return request.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
+      });
+    }
+
+    return request.fulfill({ status: 204, body: '' });
   }
-  if (/cdn-ru\.bitrix24\.ru\/b28134326\/crm\/form\/loader_(?:8|10|16)\.js/.test(request.request().url())) {
-    return request.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
-    });
-  }
-  return request.fulfill({ status: 204, body: '' });
-});
+);
 
 const loadPlaywright = async () => {
   try {
@@ -293,6 +428,678 @@ try {
     }
     await page.close();
   }
+
+  const qdNoConsentRequests = [];
+  const qdNoConsentPage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+
+  await mockExternalResources(qdNoConsentPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: ({ body, headers, method }) => {
+      qdNoConsentRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdNoConsentPage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  const qdNoConsentFrame = qdNoConsentPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=8')
+  );
+
+  if (!qdNoConsentFrame) {
+    fail('/: no-consent QD test could not find form 8 iframe.');
+  } else {
+    await qdNoConsentFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('no-consent');
+
+    await qdNoConsentPage.waitForTimeout(100);
+
+    if (qdNoConsentRequests.length !== 0) {
+      fail('/: QD emitted without analytics consent.');
+    }
+
+    const qdStorage = await qdNoConsentFrame.evaluate(() => ({
+      identity: localStorage.getItem('fgn_qd_identity_v1'),
+      pending: localStorage.getItem('fgn_qd_pending_v1'),
+      completed: localStorage.getItem('fgn_qd_completed_v1')
+    }));
+
+    if (
+      qdStorage.identity !== null ||
+      qdStorage.pending !== null ||
+      qdStorage.completed !== null
+    ) {
+      fail('/: QD localStorage was created without analytics consent.');
+    }
+
+    await qdNoConsentPage
+      .locator('#cookie-analytics-accept')
+      .click();
+
+    await qdNoConsentFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('after-late-consent');
+
+    await qdNoConsentPage.waitForTimeout(100);
+
+    if (qdNoConsentRequests.length !== 0) {
+      fail(
+        '/: input after late consent was mislabeled as the first meaningful QD input.'
+      );
+    }
+
+    const qdLateConsentStorage = await qdNoConsentFrame.evaluate(() => ({
+      identity: localStorage.getItem('fgn_qd_identity_v1'),
+      pending: localStorage.getItem('fgn_qd_pending_v1'),
+      completed: localStorage.getItem('fgn_qd_completed_v1')
+    }));
+
+    if (
+      qdLateConsentStorage.identity !== null ||
+      qdLateConsentStorage.pending !== null ||
+      qdLateConsentStorage.completed !== null
+    ) {
+      fail(
+        '/: late consent created QD storage after the form had already started.'
+      );
+    }
+  }
+
+  await qdNoConsentPage.close();
+
+  const qualifiedDemandRequests = [];
+  const qdContext = await browser.newContext({
+    viewport: { width: 1366, height: 900 }
+  });
+
+  await qdContext.addInitScript(() => {
+    try {
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: Date.now(),
+        expiresAt: Date.now() + 60 * 60 * 1000
+      }));
+    } catch {}
+  });
+
+  const qdPage = await qdContext.newPage();
+
+  await mockExternalResources(qdPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: ({ body, headers, method }) => {
+      qualifiedDemandRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdPage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  const qdHomeFrame = qdPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=8')
+  );
+
+  if (!qdHomeFrame) {
+    fail('/: QD test could not find form 8 iframe.');
+  } else {
+    const input = qdHomeFrame.locator(
+      '.b24-form input[aria-label="Имя"]'
+    );
+
+    await input.focus();
+    await qdPage.waitForTimeout(50);
+
+    if (qualifiedDemandRequests.length !== 0) {
+      fail('/: QD emitted on focus instead of value change.');
+    }
+
+    await qdHomeFrame.evaluate(() => {
+      const form = document.querySelector('.b24-form');
+      const agreement = document.createElement('div');
+      agreement.className = 'b24-form-control-agreement';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      agreement.appendChild(checkbox);
+      form?.appendChild(agreement);
+      checkbox.click();
+    });
+
+    await qdPage.waitForTimeout(50);
+
+    if (qualifiedDemandRequests.length !== 0) {
+      fail('/: QD emitted for checkbox-only change.');
+    }
+
+    await input.fill('');
+    await qdPage.waitForTimeout(50);
+
+    if (qualifiedDemandRequests.length !== 0) {
+      fail('/: QD emitted for empty input.');
+    }
+
+    await input.fill('x');
+
+    for (
+      let attempt = 0;
+      attempt < 20 &&
+      qualifiedDemandRequests.length === 0;
+      attempt += 1
+    ) {
+      await qdPage.waitForTimeout(50);
+    }
+
+    if (qualifiedDemandRequests.length !== 1) {
+      fail(
+        `/: first meaningful input emitted ${qualifiedDemandRequests.length} QD requests instead of 1.`
+      );
+    } else {
+      const request = qualifiedDemandRequests[0];
+      const payload = request.body || {};
+      const exactKeys = [
+        'schemaVersion',
+        'eventId',
+        'identityRef',
+        'identityState',
+        'eventKind',
+        'propertyRef',
+        'formRef',
+        'routeRef',
+        'cohortRef',
+        'occurredAt',
+        'sourceRevision'
+      ].sort();
+
+      if (
+        JSON.stringify(Object.keys(payload).sort()) !==
+        JSON.stringify(exactKeys)
+      ) {
+        fail(
+          '/: QD payload does not have the exact strict event keys.'
+        );
+      }
+
+      const expected = {
+        schemaVersion: '1.0.0',
+        identityState:
+          'PROVISIONAL_FIRST_PARTY_BROWSER_IDENTITY',
+        eventKind: 'FIRST_MEANINGFUL_FORM_INPUT',
+        propertyRef: 'property:fgn-public-site',
+        formRef: 'bitrix:crm-form:8',
+        routeRef: 'route:home',
+        cohortRef:
+          'fgn:web-commercial-form-to-crm-cohort:v1',
+        sourceRevision: 'site:fgn-form-start:v1'
+      };
+
+      for (const [key, value] of Object.entries(expected)) {
+        if (payload[key] !== value) {
+          fail(
+            `/: QD payload ${key}=${payload[key]} instead of ${value}.`
+          );
+        }
+      }
+
+      if (
+        !/^fgnqd_evt_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          payload.eventId || ''
+        )
+      ) {
+        fail('/: QD eventId is not an opaque UUIDv4 event id.');
+      }
+
+      if (
+        !/^fgnqd_id_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+          payload.identityRef || ''
+        )
+      ) {
+        fail('/: QD identityRef is not an opaque UUIDv4 identity id.');
+      }
+
+      if (
+        request.method !== 'POST' ||
+        request.headers['content-type'] !== 'application/json'
+      ) {
+        fail('/: QD request transport contract is incorrect.');
+      }
+
+      const serialized = JSON.stringify(payload);
+
+      for (const forbidden of [
+        'fieldName',
+        'fieldValue',
+        'contactEmail',
+        'contactPhone',
+        '"x"'
+      ]) {
+        if (serialized.includes(forbidden)) {
+          fail(
+            `/: QD payload leaked forbidden form data marker ${forbidden}.`
+          );
+        }
+      }
+    }
+
+    await input.fill('xy');
+    await qdPage.waitForTimeout(100);
+
+    if (qualifiedDemandRequests.length !== 1) {
+      fail('/: repeated meaningful input emitted duplicate QD request.');
+    }
+  }
+
+  await qdPage.close();
+
+  const qdSecondPage = await qdContext.newPage();
+
+  await mockExternalResources(qdSecondPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: ({ body, headers, method }) => {
+      qualifiedDemandRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdSecondPage.goto(
+    `${baseUrl}/kapsulirovanie/`,
+    { waitUntil: 'networkidle' }
+  );
+
+  const qdSecondFrame = qdSecondPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=10')
+  );
+
+  if (!qdSecondFrame) {
+    fail(
+      '/kapsulirovanie/: QD dedup test could not find form 10 iframe.'
+    );
+  } else {
+    await qdSecondFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('z');
+    await qdSecondPage.waitForTimeout(100);
+
+    if (qualifiedDemandRequests.length !== 1) {
+      fail(
+        '/kapsulirovanie/: same browser identity emitted a second QD request.'
+      );
+    }
+  }
+
+  await qdSecondPage.close();
+  await qdContext.close();
+
+  const qdFailurePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  const qdFailureErrors = [];
+  let qdFailureRequests = 0;
+
+  await qdFailurePage.addInitScript(() => {
+    try {
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: Date.now(),
+        expiresAt: Date.now() + 60 * 60 * 1000
+      }));
+    } catch {}
+  });
+
+  qdFailurePage.on(
+    'pageerror',
+    (error) => qdFailureErrors.push(error.message)
+  );
+
+  await mockExternalResources(qdFailurePage, {
+    useLiveBitrix: false,
+    qualifiedDemandHttpStatus: 503,
+    onQualifiedDemand: () => {
+      qdFailureRequests += 1;
+    }
+  });
+
+  await qdFailurePage.goto(
+    `${baseUrl}/kontraktnoe-proizvodstvo-bad/`,
+    { waitUntil: 'networkidle' }
+  );
+
+  const qdFailureFrame = qdFailurePage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=16')
+  );
+
+  if (!qdFailureFrame) {
+    fail(
+      '/kontraktnoe-proizvodstvo-bad/: QD failure test could not find form 16 iframe.'
+    );
+  } else {
+    const input = qdFailureFrame.locator(
+      '.b24-form input[aria-label="Имя"]'
+    );
+    await input.fill('q');
+    await qdFailurePage.waitForTimeout(100);
+
+    if (qdFailureRequests !== 1) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: failed Worker did not receive exactly one attempt.'
+      );
+    }
+
+    if (!await input.isEnabled()) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: Worker failure disabled the form input.'
+      );
+    }
+
+    if (
+      !await qdFailureFrame
+        .locator('.b24-form button[type="submit"]')
+        .isEnabled()
+    ) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: Worker failure disabled form submission.'
+      );
+    }
+
+    if (qdFailureErrors.length) {
+      fail(
+        '/kontraktnoe-proizvodstvo-bad/: Worker failure surfaced page errors: ' +
+        qdFailureErrors.join(' | ')
+      );
+    }
+  }
+
+  await qdFailurePage.close();
+
+  const qdWithdrawPage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+
+  await qdWithdrawPage.addInitScript(() => {
+    if (window.top !== window) return;
+
+    try {
+      const now = Date.now();
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: now,
+        expiresAt: now + 60 * 60 * 1000
+      }));
+      localStorage.setItem(
+        'fgn_qd_identity_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000001'
+      );
+      localStorage.setItem(
+        'fgn_qd_pending_v1',
+        '{"synthetic":true}'
+      );
+      localStorage.setItem(
+        'fgn_qd_completed_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000001'
+      );
+    } catch {}
+  });
+
+  let qdWithdrawRequests = 0;
+  const qdRevokeRequests = [];
+
+  await mockExternalResources(qdWithdrawPage, {
+    useLiveBitrix: false,
+    onQualifiedDemand: () => {
+      qdWithdrawRequests += 1;
+    },
+    onQualifiedDemandRevoke: ({ body, headers, method }) => {
+      qdRevokeRequests.push({ body, headers, method });
+    }
+  });
+
+  await qdWithdrawPage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  await qdWithdrawPage
+    .locator('[data-cookie-settings]')
+    .first()
+    .click();
+
+  await qdWithdrawPage
+    .locator('#cookie-analytics-decline')
+    .click();
+
+  for (
+    let attempt = 0;
+    attempt < 40 &&
+    qdRevokeRequests.length === 0;
+    attempt += 1
+  ) {
+    await qdWithdrawPage.waitForTimeout(50);
+  }
+
+  if (qdRevokeRequests.length !== 1) {
+    fail(
+      `/: analytics withdrawal emitted ${qdRevokeRequests.length} revoke requests instead of 1.`
+    );
+  } else {
+    const request = qdRevokeRequests[0];
+    const payload = request.body || {};
+    const exactKeys = [
+      'schemaVersion',
+      'identityRef',
+      'cohortRef'
+    ].sort();
+
+    if (
+      JSON.stringify(Object.keys(payload).sort()) !==
+      JSON.stringify(exactKeys)
+    ) {
+      fail('/: QD revoke payload does not have the exact strict keys.');
+    }
+
+    if (
+      payload.schemaVersion !== '1.0.0' ||
+      payload.identityRef !==
+        'fgnqd_id_00000000-0000-4000-8000-000000000001' ||
+      payload.cohortRef !==
+        'fgn:web-commercial-form-to-crm-cohort:v1'
+    ) {
+      fail('/: QD revoke payload coordinates are incorrect.');
+    }
+
+    if (
+      request.method !== 'POST' ||
+      request.headers['content-type'] !== 'application/json'
+    ) {
+      fail('/: QD revoke transport contract is incorrect.');
+    }
+  }
+
+  const qdAfterWithdrawal = await qdWithdrawPage.evaluate(() => ({
+    consent: JSON.parse(
+      localStorage.getItem('fgn_analytics_consent') || 'null'
+    )?.status || null,
+    identity: localStorage.getItem('fgn_qd_identity_v1'),
+    pending: localStorage.getItem('fgn_qd_pending_v1'),
+    completed: localStorage.getItem('fgn_qd_completed_v1')
+  }));
+
+  if (qdAfterWithdrawal.consent !== 'denied') {
+    fail('/: analytics consent withdrawal did not persist denied status.');
+  }
+
+  if (
+    qdAfterWithdrawal.identity !== null ||
+    qdAfterWithdrawal.pending !== null ||
+    qdAfterWithdrawal.completed !== null
+  ) {
+    fail('/: QD analytics storage survived consent withdrawal.');
+  }
+
+  const qdWithdrawFrame = qdWithdrawPage.frames().find((frame) =>
+    frame.url().includes('/forms/bitrix.html?form=8')
+  );
+
+  if (!qdWithdrawFrame) {
+    fail('/: post-withdrawal QD test could not find form 8 iframe.');
+  } else {
+    await qdWithdrawFrame
+      .locator('.b24-form input[aria-label="Имя"]')
+      .fill('after-withdrawal');
+
+    await qdWithdrawPage.waitForTimeout(100);
+
+    if (qdWithdrawRequests !== 0) {
+      fail('/: QD emitted after analytics consent withdrawal.');
+    }
+
+    const qdStorageAfterPostWithdrawalInput =
+      await qdWithdrawFrame.evaluate(() => ({
+        identity: localStorage.getItem('fgn_qd_identity_v1'),
+        pending: localStorage.getItem('fgn_qd_pending_v1'),
+        completed: localStorage.getItem('fgn_qd_completed_v1')
+      }));
+
+    if (
+      qdStorageAfterPostWithdrawalInput.identity !== null ||
+      qdStorageAfterPostWithdrawalInput.pending !== null ||
+      qdStorageAfterPostWithdrawalInput.completed !== null
+    ) {
+      fail('/: QD storage was recreated after analytics withdrawal.');
+    }
+  }
+
+  await qdWithdrawPage.close();
+
+  const qdInitialDeclinePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  let qdInitialDeclineRevokes = 0;
+
+  await mockExternalResources(qdInitialDeclinePage, {
+    useLiveBitrix: false,
+    onQualifiedDemandRevoke: () => {
+      qdInitialDeclineRevokes += 1;
+    }
+  });
+
+  await qdInitialDeclinePage.goto(`${baseUrl}/`, {
+    waitUntil: 'networkidle'
+  });
+
+  await qdInitialDeclinePage
+    .locator('#cookie-analytics-decline')
+    .click();
+  await qdInitialDeclinePage.waitForTimeout(150);
+
+  if (qdInitialDeclineRevokes !== 0) {
+    fail('/: initial analytics denial emitted revoke without a QD identity.');
+  }
+
+  const initialDeclineBridgeCount =
+    await qdInitialDeclinePage
+      .locator('iframe[data-qd-revoke-bridge]')
+      .count();
+
+  if (initialDeclineBridgeCount !== 0) {
+    fail('/: initial analytics denial created an unnecessary revoke bridge.');
+  }
+
+  await qdInitialDeclinePage.close();
+
+  const qdRevokeFailurePage = await browser.newPage({
+    viewport: { width: 1366, height: 900 }
+  });
+  const qdFailedRevokes = [];
+  const qdRevokeFailureErrors = [];
+
+  await qdRevokeFailurePage.addInitScript(() => {
+    if (window.top !== window) return;
+
+    try {
+      const now = Date.now();
+      localStorage.setItem('fgn_analytics_consent', JSON.stringify({
+        status: 'granted',
+        decidedAt: now,
+        expiresAt: now + 60 * 60 * 1000
+      }));
+      localStorage.setItem(
+        'fgn_qd_identity_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000002'
+      );
+      localStorage.setItem(
+        'fgn_qd_completed_v1',
+        'fgnqd_id_00000000-0000-4000-8000-000000000002'
+      );
+    } catch {}
+  });
+
+  qdRevokeFailurePage.on(
+    'pageerror',
+    (error) => qdRevokeFailureErrors.push(error.message)
+  );
+
+  await mockExternalResources(qdRevokeFailurePage, {
+    useLiveBitrix: false,
+    qualifiedDemandRevokeHttpStatus: 503,
+    onQualifiedDemandRevoke: ({ body }) => {
+      qdFailedRevokes.push(body);
+    }
+  });
+
+  await qdRevokeFailurePage.goto(`${baseUrl}/products/`, {
+    waitUntil: 'networkidle'
+  });
+
+  await qdRevokeFailurePage
+    .locator('[data-cookie-settings]')
+    .first()
+    .click();
+  await qdRevokeFailurePage
+    .locator('#cookie-analytics-decline')
+    .click();
+
+  for (
+    let attempt = 0;
+    attempt < 50 &&
+    qdFailedRevokes.length < 3;
+    attempt += 1
+  ) {
+    await qdRevokeFailurePage.waitForTimeout(50);
+  }
+
+  if (qdFailedRevokes.length !== 3) {
+    fail(
+      `/products/: failed revoke attempted ${qdFailedRevokes.length} times instead of bounded 3.`
+    );
+  }
+
+  const qdAfterFailedRevoke =
+    await qdRevokeFailurePage.evaluate(() => ({
+      consent: JSON.parse(
+        localStorage.getItem('fgn_analytics_consent') || 'null'
+      )?.status || null,
+      identity: localStorage.getItem('fgn_qd_identity_v1'),
+      pending: localStorage.getItem('fgn_qd_pending_v1'),
+      completed: localStorage.getItem('fgn_qd_completed_v1')
+    }));
+
+  if (
+    qdAfterFailedRevoke.consent !== 'denied' ||
+    qdAfterFailedRevoke.identity !== null ||
+    qdAfterFailedRevoke.pending !== null ||
+    qdAfterFailedRevoke.completed !== null
+  ) {
+    fail('/products/: failed revoke blocked immediate local consent cleanup.');
+  }
+
+  if (qdRevokeFailureErrors.length) {
+    fail(
+      '/products/: failed revoke surfaced page errors: ' +
+      qdRevokeFailureErrors.join(' | ')
+    );
+  }
+
+  await qdRevokeFailurePage.close();
 
   const bitrixGoalCases = [
     ['/', '8', 'B24_FORM_8_END', 'event'],
