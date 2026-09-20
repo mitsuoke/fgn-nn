@@ -246,7 +246,7 @@ if (shortFormFrames.size !== 1) {
 const isolatedFormHtml = read('forms/bitrix.html');
 const isolatedFormScript = read('forms/bitrix-embed.js');
 
-if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=3"')) {
+if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=4"')) {
   fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
 }
 
@@ -264,6 +264,18 @@ const isolatedCsp = metaContent(
 
 const isolatedScriptSrc =
   isolatedCsp.match(/script-src\s+([^;]+)/)?.[1] || '';
+
+const isolatedConnectSrc =
+  isolatedCsp.match(/connect-src\s+([^;]+)/)?.[1] || '';
+
+for (const source of [
+  'https://b24-ud1314.bitrix24.ru',
+  'https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
+]) {
+  if (!isolatedConnectSrc.split(/\s+/).includes(source)) {
+    fail(`forms/bitrix.html: connect-src не содержит ${source}.`);
+  }
+}
 
 for (const source of [
   "'unsafe-eval'",
@@ -293,10 +305,50 @@ for (const required of [
   'fgn-bitrix-success',
   'b24:form:send:success',
   '.b24-form-state.b24-form-success',
-  'parent.postMessage'
+  'parent.postMessage',
+  'https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev',
+  'FIRST_MEANINGFUL_FORM_INPUT',
+  'PROVISIONAL_FIRST_PARTY_BROWSER_IDENTITY',
+  'fgn:web-commercial-form-to-crm-cohort:v1',
+  'site:fgn-form-start:v1',
+  "credentials: 'omit'",
+  "cache: 'no-store'",
+  'keepalive: true',
+  "document.addEventListener(\n  'input'",
+  "document.addEventListener(\n  'change'"
 ]) {
   if (!isolatedFormScript.includes(required)) {
     fail(`forms/bitrix-embed.js: отсутствует обязательный фрагмент ${required}.`);
+  }
+}
+
+if (/\b(?:localStorage|sessionStorage)\b|document\.cookie/.test(isolatedFormScript)) {
+  fail('forms/bitrix-embed.js: QD provisional identity нельзя сохранять в persistent browser storage.');
+}
+
+for (const forbidden of [
+  'fieldValue',
+  'contactPhone',
+  'contactEmail',
+  'userAgent',
+  'clientIp'
+]) {
+  if (isolatedFormScript.includes(forbidden)) {
+    fail(`forms/bitrix-embed.js: QD event содержит запрещённое поле ${forbidden}.`);
+  }
+}
+
+const privacyHtml = read('privacy.html');
+
+for (const required of [
+  'Cloudflare Worker',
+  'не включаются имя, телефон, e-mail, комментарий',
+  'не сохраняется сайтом в cookies, localStorage или sessionStorage',
+  'Cloudflare D1',
+  'не сохраняет IP-адрес, user-agent, имя, телефон, e-mail или содержимое полей формы'
+]) {
+  if (!privacyHtml.includes(required)) {
+    fail(`privacy.html: отсутствует disclosure QD/Cloudflare: ${required}.`);
   }
 }
 
