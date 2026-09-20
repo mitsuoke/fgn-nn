@@ -450,8 +450,8 @@ for (const file of [
   'upakovka-i-markirovka-bad/index.html',
   'kontraktnoe-proizvodstvo-bad/index.html'
 ]) {
-  if (!read(file).includes('script.js?v=12')) {
-    fail(`${file}: страница с CRM-формой должна подключать script.js?v=12.`);
+  if (!read(file).includes('script.js?v=13')) {
+    fail(`${file}: страница с CRM-формой должна подключать script.js?v=13.`);
   }
 }
 
