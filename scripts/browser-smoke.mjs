@@ -982,6 +982,22 @@ try {
   if (!qdWithdrawFrame) {
     fail('/: post-withdrawal QD test could not find form 8 iframe.');
   } else {
+    const linkageCallsAfterWithdrawal =
+      (await qdWithdrawFrame.evaluate(
+        () => window.__fgnBitrixPropertyCalls || []
+      )).filter(([name]) => name === 'fgn_qd_identity');
+
+    if (
+      linkageCallsAfterWithdrawal.length < 2 ||
+      linkageCallsAfterWithdrawal[0]?.[1] !==
+        'fgnqd_id_00000000-0000-4000-8000-000000000001' ||
+      linkageCallsAfterWithdrawal.at(-1)?.[1] !== ''
+    ) {
+      fail(
+        '/: analytics withdrawal did not clear the QD identity from the open Bitrix form property.'
+      );
+    }
+
     await qdWithdrawFrame
       .locator('.b24-form input[aria-label="Имя"]')
       .fill('after-withdrawal');
