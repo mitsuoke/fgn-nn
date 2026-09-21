@@ -689,6 +689,26 @@ try {
     if (qualifiedDemandRequests.length !== 1) {
       fail('/: repeated meaningful input emitted duplicate QD request.');
     }
+
+    if (qualifiedDemandRequests.length === 1) {
+      const expectedIdentity =
+        qualifiedDemandRequests[0].body?.identityRef || null;
+      const propertyCalls = await qdHomeFrame.evaluate(
+        () => window.__fgnBitrixPropertyCalls || []
+      );
+      const linkageCalls = propertyCalls.filter(
+        ([name]) => name === 'fgn_qd_identity'
+      );
+
+      if (
+        linkageCalls.length !== 1 ||
+        linkageCalls[0]?.[1] !== expectedIdentity
+      ) {
+        fail(
+          '/: completed QD identity was not linked exactly once into the Bitrix hidden property.'
+        );
+      }
+    }
   }
 
   await qdPage.close();
@@ -725,6 +745,26 @@ try {
       fail(
         '/kapsulirovanie/: same browser identity emitted a second QD request.'
       );
+    }
+
+    if (qualifiedDemandRequests.length === 1) {
+      const expectedIdentity =
+        qualifiedDemandRequests[0].body?.identityRef || null;
+      const propertyCalls = await qdSecondFrame.evaluate(
+        () => window.__fgnBitrixPropertyCalls || []
+      );
+      const linkageCalls = propertyCalls.filter(
+        ([name]) => name === 'fgn_qd_identity'
+      );
+
+      if (
+        linkageCalls.length !== 1 ||
+        linkageCalls[0]?.[1] !== expectedIdentity
+      ) {
+        fail(
+          '/kapsulirovanie/: completed QD identity was not restored into the second Bitrix form.'
+        );
+      }
     }
   }
 
