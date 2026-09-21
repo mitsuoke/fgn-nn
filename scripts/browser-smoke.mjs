@@ -163,7 +163,7 @@ const mockExternalResources = (
       return request.fulfill({
         status: 200,
         contentType: 'application/javascript',
-        body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
+        body: "(function(){var match=location.search.match(/[?&]form=(8|10|16)(?:&|$)/);var id=match?Number(match[1]):0;window.__fgnBitrixPropertyCalls=[];var api={identification:{id:id},setProperty:function(name,value){window.__fgnBitrixPropertyCalls.push([name,value]);}};window.dispatchEvent(new CustomEvent('b24:form:init',{detail:{object:api}}));var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
       });
     }
 
@@ -689,6 +689,26 @@ try {
     if (qualifiedDemandRequests.length !== 1) {
       fail('/: repeated meaningful input emitted duplicate QD request.');
     }
+
+    if (qualifiedDemandRequests.length === 1) {
+      const expectedIdentity =
+        qualifiedDemandRequests[0].body?.identityRef || null;
+      const propertyCalls = await qdHomeFrame.evaluate(
+        () => window.__fgnBitrixPropertyCalls || []
+      );
+      const linkageCalls = propertyCalls.filter(
+        ([name]) => name === 'fgn_qd_identity'
+      );
+
+      if (
+        linkageCalls.length !== 1 ||
+        linkageCalls[0]?.[1] !== expectedIdentity
+      ) {
+        fail(
+          '/: completed QD identity was not linked exactly once into the Bitrix hidden property.'
+        );
+      }
+    }
   }
 
   await qdPage.close();
@@ -725,6 +745,26 @@ try {
       fail(
         '/kapsulirovanie/: same browser identity emitted a second QD request.'
       );
+    }
+
+    if (qualifiedDemandRequests.length === 1) {
+      const expectedIdentity =
+        qualifiedDemandRequests[0].body?.identityRef || null;
+      const propertyCalls = await qdSecondFrame.evaluate(
+        () => window.__fgnBitrixPropertyCalls || []
+      );
+      const linkageCalls = propertyCalls.filter(
+        ([name]) => name === 'fgn_qd_identity'
+      );
+
+      if (
+        linkageCalls.length !== 1 ||
+        linkageCalls[0]?.[1] !== expectedIdentity
+      ) {
+        fail(
+          '/kapsulirovanie/: completed QD identity was not restored into the second Bitrix form.'
+        );
+      }
     }
   }
 
@@ -942,6 +982,22 @@ try {
   if (!qdWithdrawFrame) {
     fail('/: post-withdrawal QD test could not find form 8 iframe.');
   } else {
+    const linkageCallsAfterWithdrawal =
+      (await qdWithdrawFrame.evaluate(
+        () => window.__fgnBitrixPropertyCalls || []
+      )).filter(([name]) => name === 'fgn_qd_identity');
+
+    if (
+      linkageCallsAfterWithdrawal.length < 2 ||
+      linkageCallsAfterWithdrawal[0]?.[1] !==
+        'fgnqd_id_00000000-0000-4000-8000-000000000001' ||
+      linkageCallsAfterWithdrawal.at(-1)?.[1] !== ''
+    ) {
+      fail(
+        '/: analytics withdrawal did not clear the QD identity from the open Bitrix form property.'
+      );
+    }
+
     await qdWithdrawFrame
       .locator('.b24-form input[aria-label="Имя"]')
       .fill('after-withdrawal');

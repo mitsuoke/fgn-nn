@@ -246,7 +246,7 @@ if (shortFormFrames.size !== 1) {
 const isolatedFormHtml = read('forms/bitrix.html');
 const isolatedFormScript = read('forms/bitrix-embed.js');
 
-if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=4"')) {
+if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=5"')) {
   fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
 }
 
@@ -320,6 +320,11 @@ for (const required of [
   'hasQualifiedDemandAnalyticsConsent',
   'clearQualifiedDemandStorage',
   'meaningfulInputObservedWithoutConsent',
+  'b24:form:init',
+  'fgn_qd_identity',
+  'readCompletedIdentityRef',
+  'syncQualifiedDemandBitrixProperty',
+  'setProperty',
   "credentials: 'omit'",
   "referrerPolicy: 'no-referrer'",
   "'checkbox'",
