@@ -163,7 +163,7 @@ const mockExternalResources = (
       return request.fulfill({
         status: 200,
         contentType: 'application/javascript',
-        body: "(function(){var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
+        body: "(function(){var match=location.search.match(/[?&]form=(8|10|16)(?:&|$)/);var id=match?Number(match[1]):0;window.__fgnBitrixPropertyCalls=[];var api={identification:{id:id},setProperty:function(name,value){window.__fgnBitrixPropertyCalls.push([name,value]);}};window.dispatchEvent(new CustomEvent('b24:form:init',{detail:{object:api}}));var wrapper=document.createElement('div');wrapper.className='b24-form-wrapper';wrapper.style.minHeight='720px';var form=document.createElement('form');form.className='b24-form';form.setAttribute('data-test-bitrix-form','');var input=document.createElement('input');input.setAttribute('aria-label','Имя');var button=document.createElement('button');button.type='submit';button.textContent='Отправить';form.append(input,button);wrapper.appendChild(form);document.body.appendChild(wrapper);}());"
       });
     }
 
