@@ -34,6 +34,7 @@ const QD_IDENTITY_STORAGE_KEY = 'fgn_qd_identity_v1';
 const QD_PENDING_STORAGE_KEY = 'fgn_qd_pending_v1';
 const QD_COMPLETED_STORAGE_KEY = 'fgn_qd_completed_v1';
 const QD_ANALYTICS_CONSENT_KEY = 'fgn_analytics_consent';
+const QD_BITRIX_PROPERTY_NAME = 'fgn_qd_identity';
 
 const QD_ROUTE_REFS = Object.freeze({
   '/': 'route:home',
@@ -260,9 +261,53 @@ const createPendingEvent = (
 const isCompletedIdentity = (identityRef) =>
   readStorage(QD_COMPLETED_STORAGE_KEY) === identityRef;
 
+const readCompletedIdentityRef = () => {
+  if (!hasQualifiedDemandAnalyticsConsent()) return null;
+
+  const identityRef = readStorage(QD_IDENTITY_STORAGE_KEY);
+  const completedRef = readStorage(QD_COMPLETED_STORAGE_KEY);
+
+  if (
+    !identityRef ||
+    !QD_IDENTITY_ID_PATTERN.test(identityRef) ||
+    completedRef !== identityRef
+  ) {
+    return null;
+  }
+
+  return identityRef;
+};
+
+let bitrixFormApi = null;
+let bitrixLinkedIdentityRef = null;
+
+const syncQualifiedDemandBitrixProperty = () => {
+  if (
+    !bitrixFormApi ||
+    typeof bitrixFormApi.setProperty !== 'function'
+  ) {
+    return;
+  }
+
+  const identityRef = readCompletedIdentityRef();
+
+  if (identityRef === bitrixLinkedIdentityRef) return;
+
+  try {
+    bitrixFormApi.setProperty(
+      QD_BITRIX_PROPERTY_NAME,
+      identityRef || ''
+    );
+    bitrixLinkedIdentityRef = identityRef;
+  } catch {
+    // Linkage is fail-open: never interfere with the CRM form UX.
+  }
+};
+
 const markCompletedIdentity = (identityRef) => {
   writeStorage(QD_COMPLETED_STORAGE_KEY, identityRef);
   removeStorage(QD_PENDING_STORAGE_KEY);
+  syncQualifiedDemandBitrixProperty();
 };
 
 const isMeaningfulValueChange = (target) => {
@@ -370,6 +415,33 @@ if (!config) {
   );
   marker.setAttribute('data-skip-moving', 'true');
   document.body.appendChild(marker);
+
+  window.addEventListener('b24:form:init', (event) => {
+    const form = event.detail?.object;
+    const emittedFormId = form?.identification?.id;
+
+    if (
+      String(emittedFormId) !== formId ||
+      typeof form?.setProperty !== 'function'
+    ) {
+      return;
+    }
+
+    bitrixFormApi = form;
+    syncQualifiedDemandBitrixProperty();
+  });
+
+  window.addEventListener('storage', (event) => {
+    if (
+      [
+        QD_ANALYTICS_CONSENT_KEY,
+        QD_IDENTITY_STORAGE_KEY,
+        QD_COMPLETED_STORAGE_KEY
+      ].includes(event.key)
+    ) {
+      syncQualifiedDemandBitrixProperty();
+    }
+  });
 
   const loader = document.createElement('script');
   loader.async = true;
