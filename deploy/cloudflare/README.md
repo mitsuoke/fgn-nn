@@ -57,6 +57,34 @@ Bitrix's technical form URL now points to the vendor document. The shell's
 existing QD route mapping is preserved; check native CRM source/URL fields in
 the test portal rather than assuming source attribution is unchanged.
 
+## Published-form baseline — 2026-11-13
+
+The owner declined the separate portal's registration terms and instead
+explicitly authorized one disposable submission from the published Site into
+the existing CRM, followed by removal of its test deal and newly created test
+contact. The form's mandatory data-processing consent was separately confirmed
+at action time. No separate portal was created.
+
+One synthetic submission was sent through the homepage's existing form 8.
+The Site displayed its success state. The CRM independently showed a new deal
+in `Заявки с сайта FGN`, stage `Новая`, linked to the synthetic contact. The
+order description, batch text, comment and technical URL
+`https://fgn-nn.ru/forms/bitrix.html?form=8` were present. The deal and contact
+timelines recorded the form completion and their creation.
+
+Both test records were then deleted using their own CRM card actions. The
+deal disappeared from the funnel; an all-contacts search for the exact test
+marker returned `Ничего не найдено`. CRM trash was not purged. No real customer
+record, form configuration, Site source/deployment or Cloudflare setting was
+changed. Contact details, raw CRM record IDs and authenticated screenshots
+are deliberately excluded from this public repository.
+
+This proves the currently published, same-origin form 8 creates CRM records.
+It does **not** test this PR's opaque-origin vendor frame, real server
+acceptance of `Origin: null`, forms 10/16, or the proposed HTTP headers.
+Those release gates remain open. The one-submission authorization is consumed;
+it does not authorize further production submissions, merge or deployment.
+
 ## Rollback
 
 Before release: close the draft PR. After a separately approved source release:
