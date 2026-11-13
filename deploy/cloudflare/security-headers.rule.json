@@ -1,0 +1,17 @@
+{
+  "ref": "fgn_site_security_headers_v1",
+  "description": "FGN security headers; source-only candidate, activation requires owner approval",
+  "expression": "(http.host in {\"fgn-nn.ru\" \"www.fgn-nn.ru\"} and http.request.scheme eq \"https\")",
+  "action": "rewrite",
+  "action_parameters": {
+    "headers": {
+      "content-security-policy": { "operation": "add", "value": "frame-ancestors 'self'" },
+      "x-frame-options": { "operation": "set", "value": "SAMEORIGIN" },
+      "x-content-type-options": { "operation": "set", "value": "nosniff" },
+      "strict-transport-security": { "operation": "set", "value": "max-age=604800" },
+      "referrer-policy": { "operation": "set", "value": "strict-origin-when-cross-origin" },
+      "permissions-policy": { "operation": "set", "value": "camera=(), microphone=(), geolocation=(), payment=()" }
+    }
+  },
+  "enabled": true
+}

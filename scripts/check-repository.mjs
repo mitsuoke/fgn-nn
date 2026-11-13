@@ -244,10 +244,13 @@ if (shortFormFrames.size !== 1) {
 }
 
 const isolatedFormHtml = read('forms/bitrix.html');
-const isolatedFormScript = read('forms/bitrix-embed.js');
+const isolatedShellScript = read('forms/bitrix-shell.js');
+const isolatedVendorScript = read('forms/bitrix-vendor.js');
+const isolatedFormScript = isolatedShellScript + isolatedVendorScript;
+const vendorFormHtml = read('forms/bitrix-vendor.html');
 
-if (!isolatedFormHtml.includes('src="bitrix-embed.js?v=4"')) {
-  fail('forms/bitrix.html: подключена неактуальная версия bitrix-embed.js.');
+if (!isolatedFormHtml.includes('src="bitrix-shell.js?v=1"')) {
+  fail('forms/bitrix.html: подключена неактуальная версия bitrix-shell.js.');
 }
 
 if (!isolatedFormHtml.includes(
@@ -257,7 +260,7 @@ if (!isolatedFormHtml.includes(
 }
 
 const isolatedCsp = metaContent(
-  isolatedFormHtml,
+  vendorFormHtml,
   'http-equiv',
   'Content-Security-Policy'
 );
@@ -279,8 +282,7 @@ const isolatedConnectSrc =
   isolatedCsp.match(/connect-src\s+([^;]+)/)?.[1] || '';
 
 for (const source of [
-  'https://b24-ud1314.bitrix24.ru',
-  'https://fgn-qd-ingress.fgn-9c244031b99b.workers.dev'
+  'https://b24-ud1314.bitrix24.ru'
 ]) {
   if (!isolatedConnectSrc.split(/\s+/).includes(source)) {
     fail(`forms/bitrix.html: connect-src не содержит ${source}.`);
@@ -289,6 +291,27 @@ for (const source of [
 
 if (/frame-ancestors/.test(isolatedCsp)) {
   fail('forms/bitrix.html: frame-ancestors нельзя задавать через meta CSP.');
+}
+
+const shellCsp = metaContent(isolatedFormHtml, 'http-equiv', 'Content-Security-Policy');
+if (/bitrix24|unsafe-eval|unsafe-inline/.test(shellCsp) ||
+    /cdn-ru\.bitrix24/.test(isolatedShellScript)) {
+  fail('Trusted form shell must never load vendor code or allow unsafe-eval.');
+}
+for (const required of [
+  "'allow-scripts allow-forms'", "event.origin !== 'null'",
+  'event.source !== vendorFrame.contentWindow', 'Object.keys(data).length',
+  'Number.isInteger(height)', 'bitrix-vendor.html?form='
+]) {
+  if (!isolatedShellScript.includes(required)) fail('Missing sandbox boundary: ' + required);
+}
+if (/allow-same-origin|allow-top-navigation|allow-popups/.test(isolatedShellScript)) {
+  fail('Vendor sandbox must not gain same-origin, navigation or popup privileges.');
+}
+if (!vendorFormHtml.includes('bitrix-vendor.js?v=1') ||
+    !isolatedVendorScript.includes("window.origin !== 'null'") ||
+    /fgn-qd-ingress|fgn_qd_|fgn_analytics_consent/.test(isolatedVendorScript)) {
+  fail('Vendor frame must require an opaque origin and must not own QD storage.');
 }
 
 for (const required of [
@@ -361,7 +384,7 @@ for (const file of htmlFiles) {
   }
 
   if (
-    file !== 'forms/bitrix.html' &&
+    file !== 'forms/bitrix-vendor.html' &&
     html.includes("'unsafe-eval'")
   ) {
     fail(`${file}: unsafe-eval разрешён вне изолированной CRM-страницы.`);
@@ -659,7 +682,8 @@ for (const doc of [
   }
 }
 
-const secretFiles = [...htmlFiles, 'script.js', 'shop.js', 'product-detail.js', 'commercial-pages.js', 'data/products.json'];
+const secretFiles = [...htmlFiles, 'script.js', 'shop.js', 'product-detail.js', 'commercial-pages.js',
+  'forms/bitrix-shell.js', 'forms/bitrix-vendor.js', 'forms/bitrix-embed.js', 'data/products.json'];
 const secretPatterns = [
   ['закрытый ключ', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
   ['GitHub token', /gh[pousr]_[A-Za-z0-9]{30,}/],
