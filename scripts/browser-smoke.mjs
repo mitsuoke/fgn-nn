@@ -327,7 +327,7 @@ try {
       }
 
       const isolatedFrame = page.frames().find((frame) =>
-        frame.url().includes('/forms/bitrix.html?form=8')
+        frame.url().includes('/forms/bitrix-vendor.html?form=8')
       );
 
       if (!isolatedFrame) {
@@ -379,7 +379,7 @@ try {
       }
 
       const isolatedFrame = page.frames().find((frame) =>
-        frame.url().includes(`/forms/bitrix.html?form=${expectedId}`)
+        frame.url().includes(`/forms/bitrix-vendor.html?form=${expectedId}`)
       );
 
       if (!isolatedFrame) {
@@ -446,7 +446,7 @@ try {
   });
 
   const qdNoConsentFrame = qdNoConsentPage.frames().find((frame) =>
-    frame.url().includes('/forms/bitrix.html?form=8')
+    frame.url().includes('/forms/bitrix-vendor.html?form=8')
   );
 
   if (!qdNoConsentFrame) {
@@ -462,7 +462,7 @@ try {
       fail('/: QD emitted without analytics consent.');
     }
 
-    const qdStorage = await qdNoConsentFrame.evaluate(() => ({
+    const qdStorage = await qdNoConsentFrame.parentFrame().evaluate(() => ({
       identity: localStorage.getItem('fgn_qd_identity_v1'),
       pending: localStorage.getItem('fgn_qd_pending_v1'),
       completed: localStorage.getItem('fgn_qd_completed_v1')
@@ -492,7 +492,7 @@ try {
       );
     }
 
-    const qdLateConsentStorage = await qdNoConsentFrame.evaluate(() => ({
+    const qdLateConsentStorage = await qdNoConsentFrame.parentFrame().evaluate(() => ({
       identity: localStorage.getItem('fgn_qd_identity_v1'),
       pending: localStorage.getItem('fgn_qd_pending_v1'),
       completed: localStorage.getItem('fgn_qd_completed_v1')
@@ -540,7 +540,7 @@ try {
   });
 
   const qdHomeFrame = qdPage.frames().find((frame) =>
-    frame.url().includes('/forms/bitrix.html?form=8')
+    frame.url().includes('/forms/bitrix-vendor.html?form=8')
   );
 
   if (!qdHomeFrame) {
@@ -708,7 +708,7 @@ try {
   );
 
   const qdSecondFrame = qdSecondPage.frames().find((frame) =>
-    frame.url().includes('/forms/bitrix.html?form=10')
+    frame.url().includes('/forms/bitrix-vendor.html?form=10')
   );
 
   if (!qdSecondFrame) {
@@ -766,7 +766,7 @@ try {
   );
 
   const qdFailureFrame = qdFailurePage.frames().find((frame) =>
-    frame.url().includes('/forms/bitrix.html?form=16')
+    frame.url().includes('/forms/bitrix-vendor.html?form=16')
   );
 
   if (!qdFailureFrame) {
@@ -936,7 +936,7 @@ try {
   }
 
   const qdWithdrawFrame = qdWithdrawPage.frames().find((frame) =>
-    frame.url().includes('/forms/bitrix.html?form=8')
+    frame.url().includes('/forms/bitrix-vendor.html?form=8')
   );
 
   if (!qdWithdrawFrame) {
@@ -953,7 +953,7 @@ try {
     }
 
     const qdStorageAfterPostWithdrawalInput =
-      await qdWithdrawFrame.evaluate(() => ({
+      await qdWithdrawFrame.parentFrame().evaluate(() => ({
         identity: localStorage.getItem('fgn_qd_identity_v1'),
         pending: localStorage.getItem('fgn_qd_pending_v1'),
         completed: localStorage.getItem('fgn_qd_completed_v1')
@@ -1127,7 +1127,7 @@ try {
     await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
 
     const isolatedFrame = page.frames().find((frame) =>
-      frame.url().includes(`/forms/bitrix.html?form=${formId}`)
+      frame.url().includes(`/forms/bitrix-vendor.html?form=${formId}`)
     );
 
     if (!isolatedFrame) {
@@ -1206,7 +1206,7 @@ try {
   await deniedPage.goto(`${baseUrl}/kapsulirovanie/`, { waitUntil: 'networkidle' });
 
   const deniedFrame = deniedPage.frames().find((frame) =>
-    frame.url().includes('/forms/bitrix.html?form=10')
+    frame.url().includes('/forms/bitrix-vendor.html?form=10')
   );
 
   if (!deniedFrame) {
@@ -1289,7 +1289,7 @@ try {
       if (!await hostFrame.isVisible()) fail(`${route} @ ${width}px: iframe CRM-формы не виден.`);
 
       const isolatedFrame = page.frames().find((frame) =>
-        frame.url().includes(`/forms/bitrix.html?form=${expectedId}`)
+        frame.url().includes(`/forms/bitrix-vendor.html?form=${expectedId}`)
       );
 
       if (!isolatedFrame || !await isolatedFrame.locator('.b24-form-wrapper, .b24-form').first().isVisible()) {

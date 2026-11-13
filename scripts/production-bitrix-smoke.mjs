@@ -106,6 +106,15 @@ try {
           continue;
         }
 
+        // Support both the currently published shell and the prepared sandbox.
+        await frame.waitForFunction(() => document.querySelector(
+          '.b24-form-wrapper, iframe[data-bitrix-vendor]'
+        ), null, { timeout: 20000 });
+        const vendorLocator = frame.locator('iframe[data-bitrix-vendor]');
+        if (await vendorLocator.count()) {
+          const vendorElement = await vendorLocator.elementHandle();
+          frame = await vendorElement.contentFrame();
+        }
         const wrapper = frame
           .locator('.b24-form-wrapper')
           .first();

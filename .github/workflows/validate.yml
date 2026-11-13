@@ -25,3 +25,5 @@ jobs:
         run: npm run check
       - name: Run browser smoke test
         run: npm run test:smoke
+      - name: Verify sandbox and security header behavior offline
+        run: npm run test:security
